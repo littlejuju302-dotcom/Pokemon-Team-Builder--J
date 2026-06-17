@@ -999,6 +999,24 @@ export const COMPETITIVE_SETS: Record<string, CompetitiveSet> = {
     spSpread: { hp: 2, atk: 32, def: 0, spa: 0, spd: 0, spe: 32 },
   },
 
+  'Alolan Raichu': {
+    role: 'Special Attacker (Surge Surfer)',
+    moves: [
+      { name: 'Thunderbolt',    usage: 87.4 },
+      { name: 'Psychic',        usage: 78.6 },
+      { name: 'Fake Out',       usage: 66.3 },
+      { name: 'Protect',        usage: 58.1 },
+    ],
+    items: [
+      { name: 'Life Orb',      usage: 36.4 },
+      { name: 'Sitrus Berry',  usage: 26.8 },
+      { name: 'Focus Sash',    usage: 18.3 },
+    ],
+    nature: 'Timid',
+    ability: 'Surge Surfer',
+    spSpread: { hp: 6, atk: 0, def: 0, spa: 28, spd: 0, spe: 32 },
+  },
+
   Raichu: {
     role: 'Special Attacker',
     moves: [
