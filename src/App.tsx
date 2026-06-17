@@ -1,0 +1,139 @@
+import { useState } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Shield, Swords, Star, Users } from 'lucide-react';
+import { PokemonBrowser } from './components/PokemonBrowser';
+import { TeamSlot } from './components/TeamSlot';
+import { CoveragePanel } from './components/CoveragePanel';
+import { RecommendationsPanel } from './components/RecommendationsPanel';
+import { useTeam } from './hooks/useTeam';
+
+const queryClient = new QueryClient();
+
+type Tab = 'browse' | 'coverage' | 'recommendations';
+
+function TeamBuilder() {
+  const [tab, setTab] = useState<Tab>('browse');
+  const { members, addPokemon, removePokemon, setMoves, setNature, isFull, count, hasPokemon } = useTeam();
+
+  const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
+    { id: 'browse', label: 'Browse', icon: <Star size={14} /> },
+    { id: 'coverage', label: 'Coverage', icon: <Shield size={14} /> },
+    { id: 'recommendations', label: 'Suggestions', icon: <Swords size={14} /> },
+  ];
+
+  return (
+    <div className="min-h-screen bg-[#0f1117] text-slate-100">
+      {/* Header */}
+      <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center">
+              <Users size={16} className="text-white" />
+            </div>
+            <div>
+              <h1 className="text-base font-bold text-slate-100 leading-none">Champions Team Builder</h1>
+              <p className="text-xs text-slate-500 mt-0.5">Pokémon Champions • Regulation M-B</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              {members.map((m, i) => (
+                <div
+                  key={i}
+                  className={`w-7 h-7 rounded-full border-2 flex items-center justify-center text-[10px] font-bold overflow-hidden ${
+                    m ? 'border-violet-500' : 'border-slate-700'
+                  }`}
+                >
+                  {m ? (
+                    <img
+                      src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${m.pokemon.dexNumber}.png`}
+                      alt={m.pokemon.name}
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <span className="text-slate-700">{i + 1}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+            <span className="text-xs text-slate-500">{count}/6</span>
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6">
+        {/* Left: Team */}
+        <div className="lg:w-80 xl:w-96 flex-shrink-0">
+          <div className="sticky top-20">
+            <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-3">Your Team</h2>
+            <div className="flex flex-col gap-2">
+              {members.map((member, i) => (
+                <TeamSlot
+                  key={i}
+                  member={member}
+                  slotIndex={i}
+                  onRemove={removePokemon}
+                  onSetMoves={setMoves}
+                  onSetNature={setNature}
+                />
+              ))}
+            </div>
+            {isFull && (
+              <div className="mt-3 bg-violet-900/30 border border-violet-700/50 rounded-lg p-2.5 text-xs text-violet-300 text-center">
+                Team full! Remove a Pokémon to add another.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right: tabs */}
+        <div className="flex-1 min-w-0">
+          {/* Tab bar */}
+          <div className="flex gap-1 bg-slate-800/50 p-1 rounded-xl mb-4">
+            {tabs.map(t => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                  tab === t.id
+                    ? 'bg-violet-600 text-white shadow-lg'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                }`}
+              >
+                {t.icon}
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {tab === 'browse' && (
+            <PokemonBrowser
+              onAddPokemon={addPokemon}
+              hasPokemon={hasPokemon}
+              teamFull={isFull}
+            />
+          )}
+          {tab === 'coverage' && (
+            <CoveragePanel members={members} />
+          )}
+          {tab === 'recommendations' && (
+            <RecommendationsPanel
+              members={members}
+              onAdd={addPokemon}
+              hasPokemon={hasPokemon}
+              teamFull={isFull}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TeamBuilder />
+    </QueryClientProvider>
+  );
+}
