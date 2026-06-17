@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import type { PokemonRoster, BaseStats, Pokemon } from '../types/pokemon';
+import { MB_SUPPLEMENT } from '../data/mbSupplement';
 
 const BASE_URL = 'https://raw.githubusercontent.com/otterlyclueless/pokemon-champions-data/main';
 
@@ -36,7 +37,10 @@ export function usePokemonData() {
           };
         });
 
-      return pokemon;
+      // Merge M-B supplement: only add entries not yet in the live repo
+      const repoNames = new Set(pokemon.map(p => p.name));
+      const extras = MB_SUPPLEMENT.filter(p => !repoNames.has(p.name));
+      return [...pokemon, ...extras];
     },
     staleTime: 1000 * 60 * 60, // 1 hour
   });
