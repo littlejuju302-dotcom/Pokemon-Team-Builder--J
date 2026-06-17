@@ -21,10 +21,17 @@ export function usePokemonData() {
 
       const statsMap = new Map<string, BaseStats>(stats.map(s => [s.name, s]));
 
+      // Build a stats-only fallback map from supplement (for roster entries missing stats)
+      const suppStatsMap = new Map(
+        MB_SUPPLEMENT.map(p => [p.name, { hp: p.hp, atk: p.atk, def: p.def, spa: p.spa, spd: p.spd, spe: p.spe, total: p.total }])
+      );
+
       const pokemon: Pokemon[] = roster
         .filter(r => r.championsVerified)
         .map(r => {
-          const s = statsMap.get(r.name);
+          const live = statsMap.get(r.name);
+          // Fall back to supplement stats when the live repo has a gap (total === 0)
+          const s = (live && (live.total ?? 0) > 0) ? live : (suppStatsMap.get(r.name) ?? live);
           return {
             ...r,
             hp: s?.hp ?? 0,
@@ -37,8 +44,8 @@ export function usePokemonData() {
           };
         });
 
-      // Merge M-B supplement: only add entries not yet in the live repo
-      const repoNames = new Set(pokemon.map(p => p.name));
+      // Add supplement entries not in the live roster at all
+      const repoNames = new Set(roster.filter(r => r.championsVerified).map(r => r.name));
       const extras = MB_SUPPLEMENT.filter(p => !repoNames.has(p.name));
       return [...pokemon, ...extras];
     },

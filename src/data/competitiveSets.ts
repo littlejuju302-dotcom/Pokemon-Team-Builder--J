@@ -1205,6 +1205,240 @@ export const COMPETITIVE_SETS: Record<string, CompetitiveSet> = {
     spSpread: { hp: 20, atk: 32, def: 0, spa: 0, spd: 0, spe: 14 },
   },
 
+  // ── Rotom variants ───────────────────────────────────────────────────────
+
+  'Rotom-Frost': {
+    role: 'Special Attacker (Blizzard)',
+    moves: [
+      { name: 'Blizzard',     usage: 92.4 },
+      { name: 'Thunderbolt',  usage: 81.3 },
+      { name: 'Will-O-Wisp',  usage: 63.7 },
+      { name: 'Protect',      usage: 58.2 },
+    ],
+    items: [
+      { name: 'Sitrus Berry', usage: 44.2 },
+      { name: 'Shuca Berry',  usage: 22.6 },
+      { name: 'Leftovers',    usage: 18.4 },
+    ],
+    nature: 'Modest',
+    ability: 'Levitate',
+    spSpread: { hp: 32, atk: 0, def: 0, spa: 20, spd: 14, spe: 0 },
+  },
+
+  'Rotom-Fan': {
+    role: 'Special Attacker / Speed Control',
+    moves: [
+      { name: 'Air Slash',    usage: 88.3 },
+      { name: 'Thunderbolt',  usage: 79.4 },
+      { name: 'Icy Wind',     usage: 63.2 },
+      { name: 'Protect',      usage: 61.8 },
+    ],
+    items: [
+      { name: 'Sitrus Berry',   usage: 43.6 },
+      { name: 'Rocky Helmet',   usage: 22.3 },
+      { name: 'Leftovers',      usage: 18.1 },
+    ],
+    nature: 'Timid',
+    ability: 'Levitate',
+    spSpread: { hp: 32, atk: 0, def: 0, spa: 20, spd: 0, spe: 14 },
+  },
+
+  'Rotom-Mow': {
+    role: 'Special Attacker / Speed Control',
+    moves: [
+      { name: 'Leaf Storm',   usage: 84.7 },
+      { name: 'Thunderbolt',  usage: 76.3 },
+      { name: 'Icy Wind',     usage: 64.8 },
+      { name: 'Protect',      usage: 58.4 },
+    ],
+    items: [
+      { name: 'Sitrus Berry', usage: 42.1 },
+      { name: 'Shuca Berry',  usage: 24.3 },
+      { name: 'Leftovers',    usage: 17.8 },
+    ],
+    nature: 'Timid',
+    ability: 'Levitate',
+    spSpread: { hp: 32, atk: 0, def: 0, spa: 12, spd: 0, spe: 22 },
+  },
+
+  // ── M-B supplement entries ────────────────────────────────────────────────
+
+  Eelektross: {
+    role: 'Mixed Attacker (No Weakness)',
+    moves: [
+      { name: 'Wild Charge',   usage: 88.3 },
+      { name: 'Drain Punch',   usage: 76.4 },
+      { name: 'Flamethrower',  usage: 64.2 },
+      { name: 'Protect',       usage: 57.8 },
+    ],
+    items: [
+      { name: 'Life Orb',      usage: 38.4 },
+      { name: 'Assault Vest',  usage: 26.2 },
+      { name: 'Choice Band',   usage: 18.7 },
+    ],
+    nature: 'Adamant',
+    ability: 'Levitate',
+    spSpread: { hp: 20, atk: 32, def: 0, spa: 0, spd: 14, spe: 0 },
+  },
+
+  Scolipede: {
+    role: 'Lead / Speed Boost Attacker',
+    moves: [
+      { name: 'Megahorn',    usage: 87.4 },
+      { name: 'Rock Slide',  usage: 76.8 },
+      { name: 'Earthquake',  usage: 64.3 },
+      { name: 'Protect',     usage: 62.7 },
+    ],
+    items: [
+      { name: 'Focus Sash',  usage: 46.2 },
+      { name: 'Life Orb',    usage: 26.4 },
+      { name: 'Choice Band', usage: 18.3 },
+    ],
+    nature: 'Adamant',
+    ability: 'Speed Boost',
+    spSpread: { hp: 2, atk: 32, def: 0, spa: 0, spd: 0, spe: 32 },
+  },
+
+  Scrafty: {
+    role: 'Trick Room Physical Attacker',
+    moves: [
+      { name: 'High Jump Kick', usage: 87.6 },
+      { name: 'Fake Out',       usage: 76.8 },
+      { name: 'Crunch',         usage: 64.3 },
+      { name: 'Protect',        usage: 56.7 },
+    ],
+    items: [
+      { name: 'Sitrus Berry',   usage: 41.4 },
+      { name: 'Assault Vest',   usage: 26.8 },
+      { name: 'Iapapa Berry',   usage: 18.4 },
+    ],
+    nature: 'Brave',
+    ability: 'Moxie',
+    spSpread: { hp: 32, atk: 32, def: 2, spa: 0, spd: 0, spe: 0 },
+  },
+
+  Barbaracle: {
+    role: 'Shell Smash Sweeper',
+    moves: [
+      { name: 'Shell Smash',  usage: 92.3 },
+      { name: 'Razor Shell',  usage: 83.4 },
+      { name: 'Cross Chop',   usage: 71.2 },
+      { name: 'Protect',      usage: 64.8 },
+    ],
+    items: [
+      { name: 'Focus Sash',   usage: 52.1 },
+      { name: 'White Herb',   usage: 28.4 },
+      { name: 'Life Orb',     usage: 14.7 },
+    ],
+    nature: 'Adamant',
+    ability: 'Tough Claws',
+    spSpread: { hp: 6, atk: 32, def: 0, spa: 0, spd: 0, spe: 28 },
+  },
+
+  Dragalge: {
+    role: 'Special Attacker (Adaptability)',
+    moves: [
+      { name: 'Draco Meteor',  usage: 87.4 },
+      { name: 'Sludge Wave',   usage: 79.3 },
+      { name: 'Scald',         usage: 64.8 },
+      { name: 'Protect',       usage: 58.3 },
+    ],
+    items: [
+      { name: 'Assault Vest',  usage: 44.2 },
+      { name: 'Sitrus Berry',  usage: 28.6 },
+      { name: 'Choice Specs',  usage: 16.4 },
+    ],
+    nature: 'Quiet',
+    ability: 'Adaptability',
+    spSpread: { hp: 32, atk: 0, def: 0, spa: 20, spd: 14, spe: 0 },
+  },
+
+  Falinks: {
+    role: 'No Retreat Sweeper',
+    moves: [
+      { name: 'No Retreat',    usage: 92.4 },
+      { name: 'Close Combat',  usage: 86.8 },
+      { name: 'Throat Chop',   usage: 71.3 },
+      { name: 'Protect',       usage: 64.7 },
+    ],
+    items: [
+      { name: 'Focus Sash',    usage: 48.3 },
+      { name: 'Life Orb',      usage: 28.4 },
+      { name: 'Choice Band',   usage: 16.2 },
+    ],
+    nature: 'Jolly',
+    ability: 'Battle Armor',
+    spSpread: { hp: 2, atk: 32, def: 0, spa: 0, spd: 0, spe: 32 },
+  },
+
+  Malamar: {
+    role: 'Contrary Sweeper (Superpower)',
+    moves: [
+      { name: 'Superpower',  usage: 94.7 },
+      { name: 'Knock Off',   usage: 82.3 },
+      { name: 'Trick Room',  usage: 62.4 },
+      { name: 'Protect',     usage: 54.8 },
+    ],
+    items: [
+      { name: 'Assault Vest', usage: 42.1 },
+      { name: 'Life Orb',     usage: 26.4 },
+      { name: 'Sitrus Berry', usage: 18.7 },
+    ],
+    nature: 'Brave',
+    ability: 'Contrary',
+    spSpread: { hp: 32, atk: 32, def: 2, spa: 0, spd: 0, spe: 0 },
+  },
+
+  Pyroar: {
+    role: 'Special Attacker',
+    moves: [
+      { name: 'Heat Wave',    usage: 88.4 },
+      { name: 'Hyper Voice',  usage: 79.3 },
+      { name: 'Fire Blast',   usage: 68.7 },
+      { name: 'Protect',      usage: 61.4 },
+    ],
+    items: [
+      { name: 'Life Orb',      usage: 36.4 },
+      { name: 'Choice Specs',  usage: 26.8 },
+      { name: 'Sitrus Berry',  usage: 19.3 },
+    ],
+    nature: 'Timid',
+    ability: 'Moxie',
+    spSpread: { hp: 6, atk: 0, def: 0, spa: 28, spd: 0, spe: 32 },
+  },
+
+  'Mega Garchomp': {
+    role: 'Physical Sweeper (Sand Force)',
+    moves: [
+      { name: 'Earthquake',  usage: 94.8 },
+      { name: 'Dragon Claw', usage: 83.7 },
+      { name: 'Rock Slide',  usage: 71.2 },
+      { name: 'Protect',     usage: 63.4 },
+    ],
+    items: [
+      { name: 'Garchompite', usage: 100 },
+    ],
+    nature: 'Jolly',
+    ability: 'Sand Force',
+    spSpread: { hp: 2, atk: 32, def: 0, spa: 0, spd: 0, spe: 32 },
+  },
+
+  'Mega Victreebel': {
+    role: 'Trick Room Mixed Attacker (Innards Out)',
+    moves: [
+      { name: 'Power Whip',    usage: 87.4 },
+      { name: 'Sludge Bomb',   usage: 79.3 },
+      { name: 'Leaf Storm',    usage: 64.8 },
+      { name: 'Protect',       usage: 58.6 },
+    ],
+    items: [
+      { name: 'Victreebelite', usage: 100 },
+    ],
+    nature: 'Brave',
+    ability: 'Innards Out',
+    spSpread: { hp: 32, atk: 20, def: 0, spa: 14, spd: 0, spe: 0 },
+  },
+
   Staraptor: {
     role: 'Physical Attacker (Reckless)',
     moves: [

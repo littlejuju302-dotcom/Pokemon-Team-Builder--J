@@ -44,6 +44,41 @@ export const MB_SUPPLEMENT: Pokemon[] = [
     hp: 50, atk: 65, def: 107, spa: 105, spd: 107, spe: 86, total: 520,
   },
 
+  // ── Mega Pokemon missing from base-stats.json (in roster but 0 stats) ────
+  // These ARE in the live roster.json (championsVerified: true) but have no
+  // entry in base-stats.json, so they appear with all-zero stats.
+  // The hook uses these as a stat fallback; types/abilities come from the roster.
+  {
+    name: 'Mega Alakazam', dexNumber: 65, form: 'Mega',
+    types: ['Psychic'],
+    abilities: { '0': 'Trace' },
+    championsVerified: false,
+    hp: 55, atk: 50, def: 65, spa: 175, spd: 105, spe: 150, total: 600,
+  },
+  {
+    name: 'Mega Garchomp', dexNumber: 445, form: 'Mega',
+    types: ['Dragon', 'Ground'],
+    abilities: { '0': 'Sand Force' },
+    championsVerified: false,
+    hp: 108, atk: 170, def: 115, spa: 120, spd: 95, spe: 92, total: 700,
+  },
+  {
+    name: 'Mega Victreebel', dexNumber: 71, form: 'Mega',
+    types: ['Grass', 'Poison'],
+    abilities: { '0': 'Innards Out' },
+    championsVerified: false,
+    hp: 100, atk: 130, def: 85, spa: 130, spd: 90, spe: 65, total: 600,
+  },
+
+  // ── Mega Eiscue — Champions-exclusive Mega, not in live repo at all ───────
+  {
+    name: 'Mega Eiscue', dexNumber: 875, form: 'Mega',
+    types: ['Ice'],
+    abilities: { '0': 'Ice Face' },
+    championsVerified: false,
+    hp: 85, atk: 140, def: 110, spa: 65, spd: 90, spe: 110, total: 600,
+  },
+
   // ── Basculegion female form ───────────────────────────────────────────────
   // The data repo only has Basculegion (male: 112 ATK / 80 SPA).
   // Female redistributes: 92 ATK / 100 SPA — more of a special attacker.
