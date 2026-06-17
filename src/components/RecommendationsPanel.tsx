@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Sparkles, ChevronDown, ChevronUp, Plus } from 'lucide-react';
+import { Sparkles, ChevronDown, ChevronUp, Plus, AlertTriangle, Lightbulb, CheckCircle } from 'lucide-react';
 import { TypeBadge } from './TypeBadge';
 import { PokemonSprite } from './PokemonSprite';
 import { StatBar } from './StatBar';
 import { usePokemonData } from '../hooks/usePokemonData';
-import { analyzeTeamCoverage, suggestTypes, scoreCandidate } from '../utils/coverage';
+import { analyzeTeamCoverage, suggestTypes, scoreCandidate, analyzeSynergies } from '../utils/coverage';
 import { getDefensiveEffectiveness } from '../data/typeChart';
 import { getMetaTier } from '../data/metaWeights';
 import type { TeamMember, Pokemon } from '../types/pokemon';
@@ -33,6 +33,7 @@ export function RecommendationsPanel({ members, onAdd, hasPokemon, teamFull }: P
 
   const coverage = analyzeTeamCoverage(members);
   const suggestedTypes = suggestTypes(members);
+  const synergyNotes = analyzeSynergies(members);
 
   const recommendations = (() => {
     if (!allPokemon || members.filter(Boolean).length === 0) return [];
@@ -109,6 +110,25 @@ export function RecommendationsPanel({ members, onAdd, hasPokemon, teamFull }: P
                 </span>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Synergy notes */}
+        {synergyNotes.length > 0 && (
+          <div className="flex flex-col gap-2 pt-1 border-t border-violet-800/40">
+            {synergyNotes.map((note, i) => {
+              const styles = {
+                warning: { icon: <AlertTriangle size={12} className="text-red-400 flex-shrink-0 mt-0.5" />, text: 'text-red-300', bg: 'bg-red-950/30 border-red-800/40' },
+                tip:     { icon: <Lightbulb    size={12} className="text-amber-400 flex-shrink-0 mt-0.5" />, text: 'text-amber-300', bg: 'bg-amber-950/30 border-amber-800/40' },
+                positive:{ icon: <CheckCircle  size={12} className="text-green-400 flex-shrink-0 mt-0.5" />, text: 'text-green-300', bg: 'bg-green-950/30 border-green-800/40' },
+              }[note.level];
+              return (
+                <div key={i} className={`flex items-start gap-2 rounded-lg px-3 py-2 text-xs border ${styles.bg}`}>
+                  {styles.icon}
+                  <span className={styles.text}>{note.message}</span>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

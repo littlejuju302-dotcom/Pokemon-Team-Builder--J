@@ -13,7 +13,7 @@ type Tab = 'browse' | 'coverage' | 'recommendations';
 
 function TeamBuilder() {
   const [tab, setTab] = useState<Tab>('browse');
-  const { members, addPokemon, removePokemon, setMoves, setNature, isFull, count, hasPokemon } = useTeam();
+  const { members, addPokemon, removePokemon, setMoves, setNature, setItem, isFull, count, hasPokemon } = useTeam();
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'browse', label: 'Browse', icon: <Star size={14} /> },
@@ -75,6 +75,7 @@ function TeamBuilder() {
                   onRemove={removePokemon}
                   onSetMoves={setMoves}
                   onSetNature={setNature}
+                  onSetItem={setItem}
                 />
               ))}
             </div>
