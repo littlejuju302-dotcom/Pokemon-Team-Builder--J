@@ -6,6 +6,7 @@ import { StatBar } from './StatBar';
 import { usePokemonData } from '../hooks/usePokemonData';
 import { analyzeTeamCoverage, suggestTypes, scoreCandidate } from '../utils/coverage';
 import { getDefensiveEffectiveness } from '../data/typeChart';
+import { getMetaTier } from '../data/metaWeights';
 import type { TeamMember, Pokemon } from '../types/pokemon';
 
 interface Props {
@@ -14,6 +15,17 @@ interface Props {
   hasPokemon: (name: string) => boolean;
   teamFull: boolean;
 }
+
+const TIER_COLORS: Record<string, string> = {
+  S:   'bg-red-500 text-white',
+  'A+':'bg-orange-500 text-white',
+  A:   'bg-amber-500 text-white',
+  'A-':'bg-yellow-500 text-black',
+  B:   'bg-green-600 text-white',
+  C:   'bg-blue-500 text-white',
+  D:   'bg-slate-500 text-white',
+  '?': 'bg-slate-700 text-slate-400',
+};
 
 export function RecommendationsPanel({ members, onAdd, hasPokemon, teamFull }: Props) {
   const { data: allPokemon } = usePokemonData();
@@ -29,10 +41,10 @@ export function RecommendationsPanel({ members, onAdd, hasPokemon, teamFull }: P
       .filter(p => !hasPokemon(p.name))
       .map(p => ({
         pokemon: p,
-        score: scoreCandidate(p.types, coverage, suggestedTypes, p.total),
+        scored: scoreCandidate(p.name, p.types, p, coverage, suggestedTypes),
       }))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 6);
+      .sort((a, b) => b.scored.total - a.scored.total)
+      .slice(0, 8);
   })();
 
   if (members.filter(Boolean).length === 0) {
@@ -45,45 +57,77 @@ export function RecommendationsPanel({ members, onAdd, hasPokemon, teamFull }: P
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Coverage insight */}
-      {suggestedTypes.length > 0 && (
-        <div className="bg-violet-950/40 border border-violet-800/50 rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Sparkles size={14} className="text-violet-400" />
-            <span className="text-sm font-semibold text-violet-300">Team analysis</span>
-          </div>
-          {coverage.defensiveWeaknesses.filter(w => w.count >= 2).length > 0 && (
-            <>
-              <p className="text-xs text-slate-400 mb-2">
-                Your team has multiple members weak to these types:
-              </p>
-              <div className="flex flex-wrap gap-1 mb-3">
-                {coverage.defensiveWeaknesses.filter(w => w.count >= 2).map(w => (
-                  <span key={w.type} className="flex items-center gap-1">
-                    <TypeBadge type={w.type} small />
-                    <span className="text-xs text-red-400 mr-1">({w.count}×)</span>
-                  </span>
-                ))}
-              </div>
-            </>
-          )}
-          <p className="text-xs text-slate-400 mb-1">Types that would improve your team:</p>
-          <div className="flex flex-wrap gap-1">
-            {suggestedTypes.map(t => <TypeBadge key={t} type={t} />)}
-          </div>
+      {/* Team analysis */}
+      <div className="bg-violet-950/40 border border-violet-800/50 rounded-xl p-4 flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <Sparkles size={14} className="text-violet-400" />
+          <span className="text-sm font-semibold text-violet-300">Team analysis</span>
         </div>
-      )}
 
-      {/* Recommendations list */}
+        {/* Defensive danger zones */}
+        {coverage.defensiveWeaknesses.filter(w => w.count >= 2).length > 0 && (
+          <div>
+            <p className="text-xs text-slate-400 mb-1.5">Multiple members weak to:</p>
+            <div className="flex flex-wrap gap-1">
+              {coverage.defensiveWeaknesses.filter(w => w.count >= 2).map(w => (
+                <span key={w.type} className="flex items-center gap-1">
+                  <TypeBadge type={w.type} small />
+                  <span className="text-xs text-red-400 mr-1">({w.count}×)</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Suggested defensive types */}
+        {suggestedTypes.length > 0 && (
+          <div>
+            <p className="text-xs text-slate-400 mb-1.5">Types that would plug those holes (not yet on team):</p>
+            <div className="flex flex-wrap gap-1">
+              {suggestedTypes.map(t => <TypeBadge key={t} type={t} />)}
+            </div>
+          </div>
+        )}
+
+        {/* Offensive bias notice */}
+        {coverage.offensiveBias !== 'balanced' && (
+          <div className="bg-amber-950/40 border border-amber-700/40 rounded-lg px-3 py-2 text-xs text-amber-300">
+            Your team attacks mostly <strong>{coverage.offensiveBias === 'physical' ? 'physically' : 'specially'}</strong>.
+            {' '}Consider adding a {coverage.offensiveBias === 'physical' ? 'special' : 'physical'} attacker
+            so stat boosts on one side don't shut you down.
+          </div>
+        )}
+
+        {/* Offensive gaps */}
+        {coverage.offensiveGaps.length > 0 && coverage.offensiveGaps.length <= 8 && (
+          <div>
+            <p className="text-xs text-slate-400 mb-1.5">Types your team can't hit super-effectively:</p>
+            <div className="flex flex-wrap gap-1">
+              {coverage.offensiveGaps.map(t => (
+                <span key={t} className="inline-block text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wide text-slate-400 border border-slate-600">
+                  {t}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Recommendations */}
       <div>
-        <h3 className="text-sm font-semibold text-slate-300 mb-3">Recommended Teammates</h3>
+        <h3 className="text-sm font-semibold text-slate-300 mb-1">Recommended Teammates</h3>
+        <p className="text-xs text-slate-500 mb-3">Ranked by type synergy + meta usage + offensive balance</p>
         <div className="flex flex-col gap-2">
-          {recommendations.map(({ pokemon }) => {
+          {recommendations.map(({ pokemon, scored }) => {
             const eff = getDefensiveEffectiveness(pokemon.types);
             const resistsWeaknesses = coverage.defensiveWeaknesses
               .filter(w => w.count >= 2 && eff[w.type] <= 0.5)
               .map(w => w.type);
             const isExpanded = expanded === pokemon.name;
+            const tier = getMetaTier(scored.metaScore);
+            const isPhysical = pokemon.atk > pokemon.spa + 15;
+            const isSpecial  = pokemon.spa > pokemon.atk + 15;
+            const balancesTeam = scored.balanceScore >= 4;
 
             return (
               <div key={pokemon.name} className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
@@ -93,15 +137,33 @@ export function RecommendationsPanel({ members, onAdd, hasPokemon, teamFull }: P
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-slate-100 font-semibold text-sm">{pokemon.name}</span>
                       {pokemon.types.map(t => <TypeBadge key={t} type={t} small />)}
+                      {/* Meta tier badge */}
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${TIER_COLORS[tier]}`}>
+                        {tier}
+                      </span>
                     </div>
-                    {resistsWeaknesses.length > 0 && (
-                      <div className="flex items-center gap-1 mt-1 flex-wrap">
-                        <span className="text-[10px] text-green-400">Resists:</span>
-                        {resistsWeaknesses.map(t => <TypeBadge key={t} type={t} small />)}
-                      </div>
-                    )}
-                    <div className="text-xs text-slate-500 mt-0.5">BST {pokemon.total}</div>
+
+                    {/* Why recommended */}
+                    <div className="flex flex-wrap gap-1 mt-1 items-center">
+                      {resistsWeaknesses.length > 0 && (
+                        <>
+                          <span className="text-[10px] text-green-400">Resists:</span>
+                          {resistsWeaknesses.map(t => <TypeBadge key={t} type={t} small />)}
+                        </>
+                      )}
+                      {balancesTeam && (
+                        <span className="text-[10px] text-amber-400 font-semibold ml-1">
+                          {isSpecial ? '✦ Special attacker' : '✦ Physical attacker'}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="text-xs text-slate-500 mt-0.5 flex gap-2">
+                      <span>BST {pokemon.total}</span>
+                      <span>{isPhysical ? '⚔ Physical' : isSpecial ? '✦ Special' : '⚔✦ Mixed'}</span>
+                    </div>
                   </div>
+
                   <div className="flex flex-col gap-1">
                     <button
                       onClick={() => !hasPokemon(pokemon.name) && !teamFull && onAdd(pokemon)}
@@ -133,6 +195,11 @@ export function RecommendationsPanel({ members, onAdd, hasPokemon, teamFull }: P
                     <StatBar label="SPA" value={pokemon.spa} />
                     <StatBar label="SPD" value={pokemon.spd} />
                     <StatBar label="SPE" value={pokemon.spe} />
+                    <div className="text-xs text-slate-500 mt-1 flex gap-3">
+                      <span>Type synergy: <span className="text-slate-300">{scored.typeScore.toFixed(1)}</span></span>
+                      <span>Meta tier: <span className="text-slate-300">{tier} ({scored.metaScore}/10)</span></span>
+                      {scored.balanceScore > 0 && <span>Balance: <span className="text-amber-400">+{scored.balanceScore}</span></span>}
+                    </div>
                   </div>
                 )}
               </div>

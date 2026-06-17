@@ -1,5 +1,6 @@
 import { ALL_TYPES, TYPE_CHART, getDefensiveEffectiveness } from '../data/typeChart';
-import type { PokemonType, TeamMember } from '../types/pokemon';
+import { getMetaWeight } from '../data/metaWeights';
+import type { PokemonType, TeamMember, BaseStats } from '../types/pokemon';
 
 export interface TeamCoverage {
   defensiveWeaknesses: Array<{ type: PokemonType; multiplier: number; count: number }>;
@@ -8,6 +9,7 @@ export interface TeamCoverage {
   offensiveGaps: PokemonType[];
   typeDistribution: Record<PokemonType, number>;
   existingTypes: Set<PokemonType>;
+  offensiveBias: 'physical' | 'special' | 'balanced';
 }
 
 export function analyzeTeamCoverage(members: (TeamMember | null)[]): TeamCoverage {
@@ -38,7 +40,7 @@ export function analyzeTeamCoverage(members: (TeamMember | null)[]): TeamCoverag
     .map(t => ({ type: t, count: resistanceCount[t] ?? 0 }))
     .sort((a, b) => b.count - a.count);
 
-  // Offensive coverage: types the team can hit super effectively (via STAB or moves)
+  // Offensive coverage via STAB and selected moves
   const coveredTypes = new Set<PokemonType>();
   for (const member of active) {
     for (const move of member.moves) {
@@ -67,6 +69,21 @@ export function analyzeTeamCoverage(members: (TeamMember | null)[]): TeamCoverag
     }
   }
 
+  // Detect whether team leans physical, special, or balanced
+  let physicalCount = 0;
+  let specialCount = 0;
+  for (const member of active) {
+    const { atk, spa } = member.pokemon;
+    if (atk > spa + 15) physicalCount++;
+    else if (spa > atk + 15) specialCount++;
+    // within 15 pts = mixed / irrelevant
+  }
+  let offensiveBias: 'physical' | 'special' | 'balanced' = 'balanced';
+  if (active.length >= 2) {
+    if (physicalCount >= active.length - 1 && specialCount === 0) offensiveBias = 'physical';
+    else if (specialCount >= active.length - 1 && physicalCount === 0) offensiveBias = 'special';
+  }
+
   return {
     defensiveWeaknesses,
     defensiveResistances,
@@ -74,17 +91,15 @@ export function analyzeTeamCoverage(members: (TeamMember | null)[]): TeamCoverag
     offensiveGaps,
     typeDistribution: typeDistribution as Record<PokemonType, number>,
     existingTypes,
+    offensiveBias,
   };
 }
 
 export function suggestTypes(members: (TeamMember | null)[]): PokemonType[] {
   const active = members.filter(Boolean) as TeamMember[];
   const coverage = analyzeTeamCoverage(members);
-
-  // Collect types already on the team — don't suggest more of the same
   const existingTypes = coverage.existingTypes;
 
-  // Use a lower threshold for small teams so suggestions appear sooner
   const minCount = active.length <= 2 ? 1 : 2;
   const weaknessTypes = coverage.defensiveWeaknesses
     .filter(w => w.count >= minCount)
@@ -92,11 +107,10 @@ export function suggestTypes(members: (TeamMember | null)[]): PokemonType[] {
 
   if (weaknessTypes.length === 0) return [];
 
-  // Score each type NOT already on the team by how many weaknesses it resists
   const suggestions: Map<PokemonType, number> = new Map();
   for (const weakType of weaknessTypes) {
     for (const t of ALL_TYPES) {
-      if (existingTypes.has(t)) continue; // skip types already on the team
+      if (existingTypes.has(t)) continue;
       if (TYPE_CHART[weakType][t] <= 0.5) {
         suggestions.set(t, (suggestions.get(t) ?? 0) + 1);
       }
@@ -109,41 +123,70 @@ export function suggestTypes(members: (TeamMember | null)[]): PokemonType[] {
     .slice(0, 4);
 }
 
+export interface ScoredCandidate {
+  typeScore: number;
+  metaScore: number;
+  balanceScore: number;
+  total: number;
+}
+
 export function scoreCandidate(
+  name: string,
   candidateTypes: PokemonType[],
+  stats: Pick<BaseStats, 'atk' | 'spa' | 'total'>,
   coverage: TeamCoverage,
   suggestedTypes: PokemonType[],
-  bst: number
-): number {
+): ScoredCandidate {
   const eff = getDefensiveEffectiveness(candidateTypes);
-  let score = 0;
+  let typeScore = 0;
 
-  // Resist team weaknesses — more valuable when more members share the weakness
+  // Resist team weaknesses
   for (const { type, count } of coverage.defensiveWeaknesses) {
-    if (eff[type] === 0) score += count * 5;       // immune: best
-    else if (eff[type] <= 0.5) score += count * 3; // resists
-    else if (eff[type] >= 2) score -= count * 2;   // also weak: bad
+    if (eff[type] === 0)        typeScore += count * 5;  // immune
+    else if (eff[type] <= 0.5)  typeScore += count * 3;  // resists
+    else if (eff[type] >= 2)    typeScore -= count * 2;  // also weak
   }
 
-  // STAB matches a suggested new type (types not on team that would help defensively)
+  // STAB covers defensive gap types not yet on team
   for (const t of candidateTypes) {
-    if (suggestedTypes.includes(t)) score += 4;
+    if (suggestedTypes.includes(t)) typeScore += 4;
   }
 
-  // Covers offensive gaps the team currently has, via STAB
+  // STAB hits offensive gaps
   for (const t of candidateTypes) {
     for (const defType of coverage.offensiveGaps) {
-      if (TYPE_CHART[t][defType] >= 2) score += 2;
+      if (TYPE_CHART[t][defType] >= 2) typeScore += 2;
     }
   }
 
-  // Penalise type overlap — sharing a type with the team doesn't add new coverage
+  // Penalise type overlap
   for (const t of candidateTypes) {
-    if (coverage.existingTypes.has(t)) score -= 1.5;
+    if (coverage.existingTypes.has(t)) typeScore -= 1.5;
   }
 
-  // Slight BST bonus so among equally-synergistic picks the stronger one wins
-  score += bst / 250;
+  // Slight BST tiebreaker
+  typeScore += stats.total / 250;
 
-  return score;
+  // ── Meta weight (usage-based) ──────────────────────────────
+  const metaScore = getMetaWeight(name);
+
+  // ── Physical / Special balance ─────────────────────────────
+  let balanceScore = 0;
+  const isPhysicalCandidate = stats.atk > stats.spa + 15;
+  const isSpecialCandidate  = stats.spa > stats.atk + 15;
+
+  if (coverage.offensiveBias === 'physical' && isSpecialCandidate) {
+    balanceScore = 4; // team needs a special attacker
+  } else if (coverage.offensiveBias === 'special' && isPhysicalCandidate) {
+    balanceScore = 4; // team needs a physical attacker
+  } else if (coverage.offensiveBias !== 'balanced' && !isPhysicalCandidate && !isSpecialCandidate) {
+    balanceScore = 1; // mixed attacker helps a little
+  }
+
+  // High special attack bonus when team is all-physical (extra nudge)
+  if (coverage.offensiveBias === 'physical' && stats.spa >= 110) balanceScore += 2;
+  if (coverage.offensiveBias === 'special'  && stats.atk >= 110) balanceScore += 2;
+
+  const total = typeScore + metaScore + balanceScore;
+  return { typeScore, metaScore, balanceScore, total };
 }
