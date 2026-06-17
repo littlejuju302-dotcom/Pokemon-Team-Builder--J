@@ -64,7 +64,7 @@ function TeamBuilder() {
       <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6">
         {/* Left: Team */}
         <div className="lg:w-80 xl:w-96 flex-shrink-0">
-          <div className="sticky top-20">
+          <div className="sticky top-20 lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto lg:pr-1 lg:pb-6">
             <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-3">Your Team</h2>
             <div className="flex flex-col gap-2">
               {members.map((member, i) => (
