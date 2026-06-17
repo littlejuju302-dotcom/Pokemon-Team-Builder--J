@@ -4,6 +4,56 @@ import type { Pokemon } from '../types/pokemon';
 // Base stats from standard series — Champions uses identical base stats.
 // Remove entries here once the live repo is updated to avoid duplicates.
 export const MB_SUPPLEMENT: Pokemon[] = [
+
+  // ── Rotom appliance forms ─────────────────────────────────────────────────
+  // The data repo only has base Rotom (Electric/Ghost).
+  // All appliance forms share identical stats; only the secondary type differs.
+  {
+    name: 'Rotom-Heat', dexNumber: 479, form: 'Variant',
+    types: ['Electric', 'Fire'],
+    abilities: { '0': 'Levitate' },
+    championsVerified: false,
+    hp: 50, atk: 65, def: 107, spa: 105, spd: 107, spe: 86, total: 520,
+  },
+  {
+    name: 'Rotom-Wash', dexNumber: 479, form: 'Variant',
+    types: ['Electric', 'Water'],
+    abilities: { '0': 'Levitate' },
+    championsVerified: false,
+    hp: 50, atk: 65, def: 107, spa: 105, spd: 107, spe: 86, total: 520,
+  },
+  {
+    name: 'Rotom-Frost', dexNumber: 479, form: 'Variant',
+    types: ['Electric', 'Ice'],
+    abilities: { '0': 'Levitate' },
+    championsVerified: false,
+    hp: 50, atk: 65, def: 107, spa: 105, spd: 107, spe: 86, total: 520,
+  },
+  {
+    name: 'Rotom-Fan', dexNumber: 479, form: 'Variant',
+    types: ['Electric', 'Flying'],
+    abilities: { '0': 'Levitate' },
+    championsVerified: false,
+    hp: 50, atk: 65, def: 107, spa: 105, spd: 107, spe: 86, total: 520,
+  },
+  {
+    name: 'Rotom-Mow', dexNumber: 479, form: 'Variant',
+    types: ['Electric', 'Grass'],
+    abilities: { '0': 'Levitate' },
+    championsVerified: false,
+    hp: 50, atk: 65, def: 107, spa: 105, spd: 107, spe: 86, total: 520,
+  },
+
+  // ── Basculegion female form ───────────────────────────────────────────────
+  // The data repo only has Basculegion (male: 112 ATK / 80 SPA).
+  // Female redistributes: 92 ATK / 100 SPA — more of a special attacker.
+  {
+    name: 'Basculegion-F', dexNumber: 902, form: 'Variant',
+    types: ['Water', 'Ghost'],
+    abilities: { '0': 'Swift Swim', '1': 'Adaptability', H: 'Rattled' },
+    championsVerified: false,
+    hp: 120, atk: 92, def: 65, spa: 100, spd: 75, spe: 78, total: 530,
+  },
   {
     name: 'Blaziken', dexNumber: 257, form: 'Base',
     types: ['Fire', 'Fighting'],

@@ -40,7 +40,20 @@ function toPokemonDbName(name: string): string {
   return lower.replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
 }
 
-// Fallback to PokeAPI sprite by dex number
-export function getFallbackSpriteUrl(dexNumber: number): string {
+// Fallback to PokeAPI sprite — for form variants use a per-form path when known
+const POKEAPI_FORM_PATHS: Record<string, string> = {
+  'Rotom-Heat':  'rotom-heat',
+  'Rotom-Wash':  'rotom-wash',
+  'Rotom-Frost': 'rotom-frost',
+  'Rotom-Fan':   'rotom-fan',
+  'Rotom-Mow':   'rotom-mow',
+  'Basculegion-F': 'basculegion-female',
+};
+
+export function getFallbackSpriteUrl(dexNumber: number, name?: string): string {
+  const formPath = name ? POKEAPI_FORM_PATHS[name] : undefined;
+  if (formPath) {
+    return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/forms/${formPath}.png`;
+  }
   return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${dexNumber}.png`;
 }

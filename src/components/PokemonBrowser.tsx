@@ -18,7 +18,7 @@ export function PokemonBrowser({ onAddPokemon, hasPokemon, teamFull }: Props) {
   const { data: pokemon, isLoading, error } = usePokemonData();
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<PokemonType | ''>('');
-  const [formFilter, setFormFilter] = useState<'all' | 'base' | 'mega' | 'regional'>('all');
+  const [formFilter, setFormFilter] = useState<'all' | 'base' | 'mega' | 'regional' | 'variant'>('all');
   const [sortBy, setSortBy] = useState<SortKey>('total');
   const [showFilters, setShowFilters] = useState(false);
 
@@ -31,7 +31,8 @@ export function PokemonBrowser({ onAddPokemon, hasPokemon, teamFull }: Props) {
         const matchForm = formFilter === 'all'
           || (formFilter === 'base' && p.form === 'Base')
           || (formFilter === 'mega' && p.form === 'Mega')
-          || (formFilter === 'regional' && !['Base', 'Mega'].includes(p.form));
+          || (formFilter === 'regional' && p.form === 'Regional')
+          || (formFilter === 'variant' && p.form === 'Variant');
         return matchName && matchType && matchForm;
       })
       .sort((a, b) => {
@@ -109,7 +110,7 @@ export function PokemonBrowser({ onAddPokemon, hasPokemon, teamFull }: Props) {
             <div>
               <p className="text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Form</p>
               <div className="flex gap-1">
-                {(['all', 'base', 'mega', 'regional'] as const).map(f => (
+                {(['all', 'base', 'mega', 'regional', 'variant'] as const).map(f => (
                   <button
                     key={f}
                     onClick={() => setFormFilter(f)}

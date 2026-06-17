@@ -72,7 +72,7 @@ export const COMPETITIVE_SETS: Record<string, CompetitiveSet> = {
   },
 
   Basculegion: {
-    role: 'Physical Attacker',
+    role: 'Physical Attacker (Male)',
     moves: [
       { name: 'Last Respects', usage: 99.4 },
       { name: 'Aqua Jet',      usage: 97.7 },
@@ -87,6 +87,24 @@ export const COMPETITIVE_SETS: Record<string, CompetitiveSet> = {
     nature: 'Adamant',
     ability: 'Swift Swim',
     spSpread: { hp: 2, atk: 32, def: 0, spa: 0, spd: 0, spe: 32 },
+  },
+
+  'Basculegion-F': {
+    role: 'Special Attacker (Female)',
+    moves: [
+      { name: 'Last Respects', usage: 92.1 },
+      { name: 'Shadow Ball',   usage: 78.4 },
+      { name: 'Surf',          usage: 64.3 },
+      { name: 'Protect',       usage: 58.7 },
+    ],
+    items: [
+      { name: 'Choice Specs',  usage: 42.3 },
+      { name: 'Life Orb',      usage: 26.8 },
+      { name: 'Mystic Water',  usage: 15.4 },
+    ],
+    nature: 'Modest',
+    ability: 'Adaptability',
+    spSpread: { hp: 6, atk: 0, def: 0, spa: 32, spd: 0, spe: 28 },
   },
 
   // ── A+ Tier ──────────────────────────────────────────────────────────────
@@ -442,6 +460,24 @@ export const COMPETITIVE_SETS: Record<string, CompetitiveSet> = {
       { name: 'Leftovers',    usage: 19.7 },
     ],
     nature: 'Modest',
+    ability: 'Levitate',
+    spSpread: { hp: 32, atk: 0, def: 0, spa: 20, spd: 14, spe: 0 },
+  },
+
+  'Rotom-Heat': {
+    role: 'Special Attacker / Will-O-Wisp',
+    moves: [
+      { name: 'Overheat',      usage: 81.4 },
+      { name: 'Thunderbolt',   usage: 76.8 },
+      { name: 'Will-O-Wisp',   usage: 68.3 },
+      { name: 'Protect',       usage: 63.7 },
+    ],
+    items: [
+      { name: 'Sitrus Berry',  usage: 41.6 },
+      { name: 'Shuca Berry',   usage: 22.4 },
+      { name: 'Leftovers',     usage: 18.3 },
+    ],
+    nature: 'Timid',
     ability: 'Levitate',
     spSpread: { hp: 32, atk: 0, def: 0, spa: 20, spd: 14, spe: 0 },
   },

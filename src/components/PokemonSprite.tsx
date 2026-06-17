@@ -15,7 +15,7 @@ export function PokemonSprite({ name, dexNumber, size = 80, className = '' }: Pr
   const handleError = () => {
     if (!failed) {
       setFailed(true);
-      setSrc(getFallbackSpriteUrl(dexNumber));
+      setSrc(getFallbackSpriteUrl(dexNumber, name));
     }
   };
 
