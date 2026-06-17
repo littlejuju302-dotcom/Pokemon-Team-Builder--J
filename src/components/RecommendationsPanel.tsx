@@ -87,7 +87,6 @@ function OffensiveReason({ types, coverage }: { types: PokemonType[]; coverage: 
   const coversGaps = coverage.offensiveGaps.filter(defType =>
     types.some(t => TYPE_CHART[t][defType] >= 2)
   );
-  const isPhysical = false; // determined by stats, shown separately
   if (coversGaps.length === 0)
     return <span className="text-[10px] text-slate-500">No new type coverage</span>;
   return (
