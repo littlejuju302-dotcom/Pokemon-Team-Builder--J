@@ -1,10 +1,26 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { TeamMember, Pokemon, Move } from '../types/pokemon';
 
 const TEAM_SIZE = 6;
+const AUTOSAVE_KEY = 'champ-team-v1';
+
+function loadFromStorage(): (TeamMember | null)[] {
+  try {
+    const raw = localStorage.getItem(AUTOSAVE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length === TEAM_SIZE) return parsed;
+    }
+  } catch {}
+  return Array(TEAM_SIZE).fill(null);
+}
 
 export function useTeam() {
-  const [members, setMembers] = useState<(TeamMember | null)[]>(Array(TEAM_SIZE).fill(null));
+  const [members, setMembers] = useState<(TeamMember | null)[]>(loadFromStorage);
+
+  useEffect(() => {
+    try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(members)); } catch {}
+  }, [members]);
 
   const addPokemon = useCallback((pokemon: Pokemon, slotIndex?: number) => {
     setMembers(prev => {
@@ -60,6 +76,10 @@ export function useTeam() {
     });
   }, []);
 
+  const loadTeam = useCallback((newMembers: (TeamMember | null)[]) => {
+    setMembers(newMembers.length === TEAM_SIZE ? newMembers : Array(TEAM_SIZE).fill(null));
+  }, []);
+
   const isFull = members.every(m => m !== null);
   const count = members.filter(Boolean).length;
 
@@ -73,6 +93,7 @@ export function useTeam() {
     setMoves,
     setNature,
     setItem,
+    loadTeam,
     isFull,
     count,
     hasPokemon,
