@@ -4,7 +4,7 @@ import { TypeBadge } from './TypeBadge';
 import { PokemonSprite } from './PokemonSprite';
 import { StatBar } from './StatBar';
 import { usePokemonData } from '../hooks/usePokemonData';
-import { analyzeTeamCoverage, suggestTypes } from '../utils/coverage';
+import { analyzeTeamCoverage, suggestTypes, scoreCandidate } from '../utils/coverage';
 import { getDefensiveEffectiveness } from '../data/typeChart';
 import type { TeamMember, Pokemon } from '../types/pokemon';
 
@@ -27,40 +27,10 @@ export function RecommendationsPanel({ members, onAdd, hasPokemon, teamFull }: P
 
     return allPokemon
       .filter(p => !hasPokemon(p.name))
-      .map(p => {
-        const eff = getDefensiveEffectiveness(p.types);
-        let score = 0;
-
-        // Resist team's biggest weaknesses
-        for (const { type, count } of coverage.defensiveWeaknesses) {
-          if (eff[type] <= 0.5) score += count * 3;
-          if (eff[type] === 0) score += count * 4;
-        }
-
-        // STAB matches a suggested coverage type
-        for (const t of p.types) {
-          if (suggestedTypes.includes(t)) score += 5;
-        }
-
-        // Penalize Pokemon that share multiple weaknesses with the team
-        for (const { type, count } of coverage.defensiveWeaknesses.filter(w => w.count >= 2)) {
-          if (eff[type] >= 2) score -= count * 2;
-        }
-
-        // Offensive gap coverage via STAB
-        for (const gapType of coverage.offensiveGaps) {
-          for (const t of p.types) {
-            if (!members.filter(Boolean).some((m) => m!.pokemon.types.includes(t))) {
-              const alreadyCovered = coverage.offensiveCoverage.includes(gapType);
-              if (!alreadyCovered) score += 1;
-            }
-          }
-        }
-
-        score += p.total / 200;
-
-        return { pokemon: p, score };
-      })
+      .map(p => ({
+        pokemon: p,
+        score: scoreCandidate(p.types, coverage, suggestedTypes, p.total),
+      }))
       .sort((a, b) => b.score - a.score)
       .slice(0, 6);
   })();
