@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Shield, Swords, Star, Users } from 'lucide-react';
+import { Shield, Swords, TrendingUp, Users } from 'lucide-react';
 import { PokemonBrowser } from './components/PokemonBrowser';
 import { TeamSlot } from './components/TeamSlot';
 import { TeamSaver } from './components/TeamSaver';
@@ -17,7 +17,7 @@ function TeamBuilder() {
   const { members, addPokemon, removePokemon, setMoves, setNature, setItem, loadTeam, isFull, count, hasPokemon } = useTeam();
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: 'browse', label: 'Browse', icon: <Star size={14} /> },
+    { id: 'browse', label: 'Trending', icon: <TrendingUp size={14} /> },
     { id: 'coverage', label: 'Coverage', icon: <Shield size={14} /> },
     { id: 'recommendations', label: 'Suggestions', icon: <Swords size={14} /> },
   ];

@@ -191,6 +191,62 @@ export function scoreCandidate(
   return { typeScore, metaScore, balanceScore, total };
 }
 
+// ── Dimension-specific scorers used by the 3-tab recommendation panel ─────
+
+export function getMegaCount(members: (TeamMember | null)[]): number {
+  return members.filter(Boolean).filter(m => m!.pokemon.name.startsWith('Mega ')).length;
+}
+
+export function applyMegaPenalty(name: string, megaCount: number): number {
+  if (!name.startsWith('Mega ')) return 0;
+  if (megaCount === 0) return 0;
+  if (megaCount === 1) return -3;   // second mega: deprioritise
+  return -12;                        // third+ mega: basically exclude
+}
+
+export function scoreDefensive(
+  candidateTypes: PokemonType[],
+  coverage: TeamCoverage,
+  suggestedTypes: PokemonType[],
+): number {
+  const eff = getDefensiveEffectiveness(candidateTypes);
+  let score = 0;
+  for (const { type, count } of coverage.defensiveWeaknesses) {
+    if (eff[type] === 0)       score += count * 6;  // immune
+    else if (eff[type] <= 0.5) score += count * 4;  // resists
+    else if (eff[type] >= 2)   score -= count * 3;  // also weak
+  }
+  for (const t of candidateTypes) {
+    if (suggestedTypes.includes(t)) score += 5;
+    if (coverage.existingTypes.has(t)) score -= 1.5;
+  }
+  return score;
+}
+
+export function scoreOffensive(
+  candidateTypes: PokemonType[],
+  stats: Pick<BaseStats, 'atk' | 'spa' | 'total'>,
+  coverage: TeamCoverage,
+): number {
+  let score = 0;
+  // STAB covers offensive gaps
+  for (const t of candidateTypes) {
+    for (const defType of coverage.offensiveGaps) {
+      if (TYPE_CHART[t][defType] >= 2) score += 5;
+    }
+    if (!coverage.existingTypes.has(t)) score += 1; // type diversity bonus
+  }
+  // Balance bonus (same logic as general scorer)
+  const isPhysical = stats.atk > stats.spa + 15;
+  const isSpecial  = stats.spa > stats.atk + 15;
+  if (coverage.offensiveBias === 'physical' && isSpecial)  score += 4;
+  if (coverage.offensiveBias === 'special'  && isPhysical) score += 4;
+  if (coverage.offensiveBias === 'physical' && stats.spa >= 110) score += 2;
+  if (coverage.offensiveBias === 'special'  && stats.atk >= 110) score += 2;
+  score += stats.total / 300;
+  return score;
+}
+
 // ── Team synergy analysis ─────────────────────────────────────────────────
 
 export type SynergyLevel = 'warning' | 'tip' | 'positive';

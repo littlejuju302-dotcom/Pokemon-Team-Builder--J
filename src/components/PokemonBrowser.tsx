@@ -4,6 +4,7 @@ import { PokemonCard } from './PokemonCard';
 import { TypeBadge } from './TypeBadge';
 import { usePokemonData } from '../hooks/usePokemonData';
 import { ALL_TYPES } from '../data/typeChart';
+import { getMetaWeight } from '../data/metaWeights';
 import type { Pokemon, PokemonType } from '../types/pokemon';
 
 interface Props {
@@ -12,14 +13,14 @@ interface Props {
   teamFull: boolean;
 }
 
-type SortKey = 'name' | 'total' | 'hp' | 'atk' | 'def' | 'spa' | 'spd' | 'spe';
+type SortKey = 'meta' | 'name' | 'total' | 'hp' | 'atk' | 'def' | 'spa' | 'spd' | 'spe';
 
 export function PokemonBrowser({ onAddPokemon, hasPokemon, teamFull }: Props) {
   const { data: pokemon, isLoading, error } = usePokemonData();
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<PokemonType | ''>('');
   const [formFilter, setFormFilter] = useState<'all' | 'base' | 'mega' | 'regional' | 'variant'>('all');
-  const [sortBy, setSortBy] = useState<SortKey>('total');
+  const [sortBy, setSortBy] = useState<SortKey>('meta');
   const [showFilters, setShowFilters] = useState(false);
 
   const filtered = useMemo(() => {
@@ -37,6 +38,10 @@ export function PokemonBrowser({ onAddPokemon, hasPokemon, teamFull }: Props) {
       })
       .sort((a, b) => {
         if (sortBy === 'name') return a.name.localeCompare(b.name);
+        if (sortBy === 'meta') {
+          const diff = getMetaWeight(b.name) - getMetaWeight(a.name);
+          return diff !== 0 ? diff : b.total - a.total;
+        }
         return (b[sortBy] ?? 0) - (a[sortBy] ?? 0);
       });
   }, [pokemon, query, typeFilter, formFilter, sortBy]);
@@ -130,6 +135,7 @@ export function PokemonBrowser({ onAddPokemon, hasPokemon, teamFull }: Props) {
                 onChange={e => setSortBy(e.target.value as SortKey)}
                 className="bg-slate-700 border border-slate-600 text-slate-200 text-xs rounded-lg px-2 py-1"
               >
+                <option value="meta">Meta Usage</option>
                 <option value="total">BST</option>
                 <option value="name">Name</option>
                 <option value="hp">HP</option>
