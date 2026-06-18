@@ -30,7 +30,7 @@ export const ALL_TYPES: PokemonType[] = [
 ];
 
 export const TYPE_COLORS: Record<PokemonType, string> = {
-  Normal:   '#A8A878',
+  Normal:   '#9E9E9E',  // neutral gray
   Fire:     '#F08030',
   Water:    '#6890F0',
   Electric: '#F8D030',
@@ -38,15 +38,15 @@ export const TYPE_COLORS: Record<PokemonType, string> = {
   Ice:      '#98D8D8',
   Fighting: '#C03028',
   Poison:   '#A040A0',
-  Ground:   '#E0C068',
-  Flying:   '#A890F0',
+  Ground:   '#DE7840',  // terracotta orange (distinct from Rock)
+  Flying:   '#80B0F8',  // sky-blue (distinct from Ghost purple)
   Psychic:  '#F85888',
-  Bug:      '#A8B820',
-  Rock:     '#B8A038',
+  Bug:      '#78B820',  // olive green
+  Rock:     '#8C7240',  // stone brown (distinct from Ground orange)
   Ghost:    '#705898',
   Dragon:   '#7038F8',
-  Dark:     '#705848',
-  Steel:    '#B8B8D0',
+  Dark:     '#2E2830',  // near-black charcoal
+  Steel:    '#6098B8',  // steel blue (distinct from Normal gray)
   Fairy:    '#EE99AC',
 };
 

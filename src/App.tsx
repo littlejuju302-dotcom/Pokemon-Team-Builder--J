@@ -1,25 +1,27 @@
 import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Shield, Swords, TrendingUp, Users } from 'lucide-react';
+import { Shield, Swords, Target, TrendingUp, Users } from 'lucide-react';
 import { PokemonBrowser } from './components/PokemonBrowser';
 import { TeamSlot } from './components/TeamSlot';
 import { TeamSaver } from './components/TeamSaver';
 import { CoveragePanel } from './components/CoveragePanel';
 import { RecommendationsPanel } from './components/RecommendationsPanel';
+import { MatchupPicker } from './components/MatchupPicker';
 import { useTeam } from './hooks/useTeam';
 
 const queryClient = new QueryClient();
 
-type Tab = 'browse' | 'coverage' | 'recommendations';
+type Tab = 'browse' | 'coverage' | 'recommendations' | 'matchup';
 
 function TeamBuilder() {
   const [tab, setTab] = useState<Tab>('browse');
-  const { members, addPokemon, removePokemon, setMoves, setNature, setItem, loadTeam, isFull, count, hasPokemon } = useTeam();
+  const { members, addPokemon, removePokemon, setMoves, setNature, setItem, setMegaEvolved, loadTeam, isFull, count, hasPokemon } = useTeam();
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'browse', label: 'Trending', icon: <TrendingUp size={14} /> },
     { id: 'coverage', label: 'Coverage', icon: <Shield size={14} /> },
     { id: 'recommendations', label: 'Suggestions', icon: <Swords size={14} /> },
+    { id: 'matchup', label: 'Matchup', icon: <Target size={14} /> },
   ];
 
   return (
@@ -77,6 +79,7 @@ function TeamBuilder() {
                   onSetMoves={setMoves}
                   onSetNature={setNature}
                   onSetItem={setItem}
+                  onSetMegaEvolved={setMegaEvolved}
                 />
               ))}
             </div>
@@ -126,6 +129,9 @@ function TeamBuilder() {
               hasPokemon={hasPokemon}
               teamFull={isFull}
             />
+          )}
+          {tab === 'matchup' && (
+            <MatchupPicker members={members} />
           )}
         </div>
       </div>

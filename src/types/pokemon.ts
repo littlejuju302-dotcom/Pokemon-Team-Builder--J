@@ -50,6 +50,8 @@ export interface TeamMember {
   nature: string;
   item: string;
   spAllocation: Partial<Record<keyof BaseStats, number>>;
+  megaEvolved?: boolean;
+  megaFormName?: string;
 }
 
 export interface Team {

@@ -19,7 +19,7 @@ export function PokemonBrowser({ onAddPokemon, hasPokemon, teamFull }: Props) {
   const { data: pokemon, isLoading, error } = usePokemonData();
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<PokemonType | ''>('');
-  const [formFilter, setFormFilter] = useState<'all' | 'base' | 'mega' | 'regional' | 'variant'>('all');
+  const [formFilter, setFormFilter] = useState<'all' | 'base' | 'regional' | 'variant'>('all');
   const [sortBy, setSortBy] = useState<SortKey>('meta');
   const [showFilters, setShowFilters] = useState(false);
 
@@ -27,11 +27,11 @@ export function PokemonBrowser({ onAddPokemon, hasPokemon, teamFull }: Props) {
     if (!pokemon) return [];
     return pokemon
       .filter(p => {
+        if (p.form === 'Mega') return false; // Megas accessed via slot Mega Evolution
         const matchName = p.name.toLowerCase().includes(query.toLowerCase());
         const matchType = !typeFilter || p.types.includes(typeFilter);
         const matchForm = formFilter === 'all'
           || (formFilter === 'base' && p.form === 'Base')
-          || (formFilter === 'mega' && p.form === 'Mega')
           || (formFilter === 'regional' && p.form === 'Regional')
           || (formFilter === 'variant' && p.form === 'Variant');
         return matchName && matchType && matchForm;
@@ -115,7 +115,7 @@ export function PokemonBrowser({ onAddPokemon, hasPokemon, teamFull }: Props) {
             <div>
               <p className="text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Form</p>
               <div className="flex gap-1">
-                {(['all', 'base', 'mega', 'regional', 'variant'] as const).map(f => (
+                {(['all', 'base', 'regional', 'variant'] as const).map(f => (
                   <button
                     key={f}
                     onClick={() => setFormFilter(f)}

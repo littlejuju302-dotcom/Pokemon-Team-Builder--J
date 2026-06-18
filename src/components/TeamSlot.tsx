@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { X, ChevronDown, ChevronUp, Check } from 'lucide-react';
 import { TypeBadge } from './TypeBadge';
 import { StatBar } from './StatBar';
 import { PokemonSprite } from './PokemonSprite';
 import { MoveSelector } from './MoveSelector';
-import { useNatures } from '../hooks/usePokemonData';
+import { useNatures, usePokemonData } from '../hooks/usePokemonData';
 import { getCompetitiveSet } from '../data/competitiveSets';
 import type { TeamMember, Move } from '../types/pokemon';
 
@@ -15,6 +15,7 @@ interface Props {
   onSetMoves: (i: number, moves: Move[]) => void;
   onSetNature: (i: number, nature: string) => void;
   onSetItem: (i: number, item: string) => void;
+  onSetMegaEvolved: (i: number, evolved: boolean, formName?: string) => void;
 }
 
 const SP_STAT_LABELS = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'] as const;
@@ -29,9 +30,19 @@ function spBarColor(value: number) {
   return '';
 }
 
-export function TeamSlot({ member, slotIndex, onRemove, onSetMoves, onSetNature, onSetItem }: Props) {
+export function TeamSlot({ member, slotIndex, onRemove, onSetMoves, onSetNature, onSetItem, onSetMegaEvolved }: Props) {
   const [expanded, setExpanded] = useState(false);
   const { data: natures } = useNatures();
+  const { data: allPokemon } = usePokemonData();
+
+  const megaForms = useMemo(() => {
+    if (!allPokemon || !member) return [];
+    const baseName = member.pokemon.name;
+    return allPokemon.filter(p =>
+      p.form === 'Mega' &&
+      (p.name === `Mega ${baseName}` || p.name.startsWith(`Mega ${baseName} `))
+    );
+  }, [allPokemon, member?.pokemon.name]);
 
   if (!member) {
     return (
@@ -42,7 +53,26 @@ export function TeamSlot({ member, slotIndex, onRemove, onSetMoves, onSetNature,
   }
 
   const { pokemon, moves, nature, item } = member;
-  const compSet = getCompetitiveSet(pokemon.name);
+
+  const activeMega = member.megaEvolved && member.megaFormName
+    ? allPokemon?.find(p => p.name === member.megaFormName) ?? null
+    : null;
+  const displayPokemon = activeMega ?? pokemon;
+
+  const compSet = getCompetitiveSet(
+    member.megaEvolved && member.megaFormName ? member.megaFormName : pokemon.name
+  );
+
+  const handleMegaEvolve = (megaName: string) => {
+    const megaSet = getCompetitiveSet(megaName);
+    const stone = megaSet?.items[0]?.name;
+    if (stone && !item) onSetItem(slotIndex, stone);
+    onSetMegaEvolved(slotIndex, true, megaName);
+  };
+
+  const handleRevert = () => {
+    onSetMegaEvolved(slotIndex, false, undefined);
+  };
 
   return (
     <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
@@ -51,11 +81,18 @@ export function TeamSlot({ member, slotIndex, onRemove, onSetMoves, onSetNature,
         <PokemonSprite name={pokemon.name} dexNumber={pokemon.dexNumber} size={52} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-slate-100 font-semibold text-sm">{pokemon.name}</span>
-            {pokemon.types.map(t => <TypeBadge key={t} type={t} small />)}
+            <span className="text-slate-100 font-semibold text-sm">
+              {member.megaEvolved ? member.megaFormName : pokemon.name}
+            </span>
+            {member.megaEvolved && (
+              <span className="text-[9px] font-bold bg-amber-500/20 border border-amber-500/50 text-amber-400 px-1.5 py-0.5 rounded uppercase tracking-wide">
+                MEGA
+              </span>
+            )}
+            {displayPokemon.types.map(t => <TypeBadge key={t} type={t} small />)}
           </div>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-xs text-slate-500">BST {pokemon.total}</span>
+            <span className="text-xs text-slate-500">BST {displayPokemon.total}</span>
             {item && (
               <span className="text-[10px] bg-amber-900/50 border border-amber-700/50 text-amber-300 px-1.5 py-0.5 rounded">
                 {item}
@@ -85,16 +122,54 @@ export function TeamSlot({ member, slotIndex, onRemove, onSetMoves, onSetNature,
       {/* Expanded details */}
       {expanded && (
         <div className="border-t border-slate-700 p-3 flex flex-col gap-4">
+
+          {/* Mega Evolution */}
+          {megaForms.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Mega Evolution</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                {member.megaEvolved ? (
+                  <>
+                    <span className="text-xs text-amber-300 font-medium">{member.megaFormName}</span>
+                    <button
+                      onClick={handleRevert}
+                      className="text-xs bg-slate-700 border border-slate-600 text-slate-300 hover:border-red-500 hover:text-red-400 px-2 py-1 rounded-lg transition-colors"
+                    >
+                      ↩ Revert
+                    </button>
+                  </>
+                ) : (
+                  megaForms.map(mega => {
+                    const label = mega.name === `Mega ${pokemon.name}`
+                      ? 'Mega Evolve'
+                      : mega.name.replace(`Mega ${pokemon.name} `, '');
+                    return (
+                      <button
+                        key={mega.name}
+                        onClick={() => handleMegaEvolve(mega.name)}
+                        className="text-xs bg-amber-600/20 border border-amber-500/50 text-amber-400 hover:bg-amber-600/40 hover:border-amber-400 px-2.5 py-1 rounded-lg transition-colors font-medium"
+                      >
+                        ⚡ {label}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Base Stats */}
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Base Stats</p>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
+              {member.megaEvolved ? 'Mega Form Stats' : 'Base Stats'}
+            </p>
             <div className="flex flex-col gap-1">
-              <StatBar label="HP"  value={pokemon.hp} />
-              <StatBar label="ATK" value={pokemon.atk} />
-              <StatBar label="DEF" value={pokemon.def} />
-              <StatBar label="SPA" value={pokemon.spa} />
-              <StatBar label="SPD" value={pokemon.spd} />
-              <StatBar label="SPE" value={pokemon.spe} />
+              <StatBar label="HP"  value={displayPokemon.hp} />
+              <StatBar label="ATK" value={displayPokemon.atk} />
+              <StatBar label="DEF" value={displayPokemon.def} />
+              <StatBar label="SPA" value={displayPokemon.spa} />
+              <StatBar label="SPD" value={displayPokemon.spd} />
+              <StatBar label="SPE" value={displayPokemon.spe} />
             </div>
           </div>
 
@@ -227,11 +302,13 @@ export function TeamSlot({ member, slotIndex, onRemove, onSetMoves, onSetNature,
 
           {/* Abilities */}
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Abilities</p>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">
+              {member.megaEvolved ? 'Mega Ability' : 'Abilities'}
+            </p>
             <div className="flex flex-wrap gap-1">
-              {Object.entries(pokemon.abilities).map(([slot, ability]) => (
+              {Object.entries(displayPokemon.abilities).map(([slot, ability]) => (
                 <span key={slot} className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded">
-                  {ability}{slot === 'H' ? ' (HA)' : ''}
+                  {ability}{slot === 'H' && !member.megaEvolved ? ' (HA)' : ''}
                 </span>
               ))}
             </div>

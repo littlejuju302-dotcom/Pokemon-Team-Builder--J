@@ -194,7 +194,7 @@ export function scoreCandidate(
 // ── Dimension-specific scorers used by the 3-tab recommendation panel ─────
 
 export function getMegaCount(members: (TeamMember | null)[]): number {
-  return members.filter(Boolean).filter(m => m!.pokemon.name.startsWith('Mega ')).length;
+  return members.filter(Boolean).filter(m => m!.megaEvolved === true).length;
 }
 
 export function applyMegaPenalty(name: string, megaCount: number): number {

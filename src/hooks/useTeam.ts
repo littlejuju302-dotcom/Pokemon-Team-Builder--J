@@ -76,6 +76,16 @@ export function useTeam() {
     });
   }, []);
 
+  const setMegaEvolved = useCallback((slotIndex: number, evolved: boolean, formName?: string) => {
+    setMembers(prev => {
+      const next = [...prev];
+      const member = next[slotIndex];
+      if (!member) return prev;
+      next[slotIndex] = { ...member, megaEvolved: evolved, megaFormName: formName };
+      return next;
+    });
+  }, []);
+
   const loadTeam = useCallback((newMembers: (TeamMember | null)[]) => {
     setMembers(newMembers.length === TEAM_SIZE ? newMembers : Array(TEAM_SIZE).fill(null));
   }, []);
@@ -93,6 +103,7 @@ export function useTeam() {
     setMoves,
     setNature,
     setItem,
+    setMegaEvolved,
     loadTeam,
     isFull,
     count,
