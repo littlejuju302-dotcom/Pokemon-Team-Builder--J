@@ -1223,6 +1223,120 @@ export const COMPETITIVE_SETS: Record<string, CompetitiveSet> = {
     spSpread: { hp: 20, atk: 32, def: 0, spa: 0, spd: 0, spe: 14 },
   },
 
+  // ── Regulation M-B Champions-exclusive Megas ─────────────────────────────
+
+  'Mega Staraptor': {
+    role: 'Physical Attacker (Contrary + Close Combat)',
+    moves: [
+      { name: 'Close Combat', usage: 99.2 },
+      { name: 'Brave Bird',   usage: 86.4 },
+      { name: 'Protect',      usage: 71.3 },
+      { name: 'U-turn',       usage: 58.7 },
+    ],
+    items: [
+      { name: 'Staraptite', usage: 100 },
+    ],
+    nature: 'Adamant',
+    ability: 'Contrary',
+    spSpread: { hp: 2, atk: 32, def: 0, spa: 0, spd: 0, spe: 32 },
+  },
+
+  'Mega Raichu X': {
+    role: 'Physical Attacker / Electric Terrain Setter',
+    moves: [
+      { name: 'Volt Tackle',    usage: 96.3 },
+      { name: 'Close Combat',   usage: 82.4 },
+      { name: 'Fake Out',       usage: 71.6 },
+      { name: 'Protect',        usage: 65.8 },
+    ],
+    items: [
+      { name: 'Raichunite X', usage: 100 },
+    ],
+    nature: 'Jolly',
+    ability: 'Electric Surge',
+    spSpread: { hp: 2, atk: 32, def: 0, spa: 0, spd: 0, spe: 32 },
+  },
+
+  'Mega Raichu Y': {
+    role: 'Special Attacker',
+    moves: [
+      { name: 'Thunderbolt',      usage: 93.7 },
+      { name: 'Dazzling Gleam',   usage: 81.4 },
+      { name: 'Volt Switch',      usage: 68.3 },
+      { name: 'Protect',          usage: 62.1 },
+    ],
+    items: [
+      { name: 'Raichunite Y', usage: 100 },
+    ],
+    nature: 'Timid',
+    ability: 'Galvanize',
+    spSpread: { hp: 6, atk: 0, def: 0, spa: 28, spd: 0, spe: 32 },
+  },
+
+  'Mega Eelektross': {
+    role: 'Mixed Attacker (Eelevate)',
+    moves: [
+      { name: 'Wild Charge',   usage: 86.3 },
+      { name: 'Drain Punch',   usage: 74.8 },
+      { name: 'Flamethrower',  usage: 63.4 },
+      { name: 'Protect',       usage: 58.7 },
+    ],
+    items: [
+      { name: 'Eelektrosite', usage: 100 },
+    ],
+    nature: 'Adamant',
+    ability: 'Eelevate',
+    spSpread: { hp: 20, atk: 32, def: 0, spa: 0, spd: 14, spe: 0 },
+  },
+
+  'Mega Pyroar': {
+    role: 'Special Attacker (Fire Mane)',
+    moves: [
+      { name: 'Heat Wave',    usage: 89.4 },
+      { name: 'Hyper Voice',  usage: 78.6 },
+      { name: 'Fire Blast',   usage: 65.3 },
+      { name: 'Protect',      usage: 61.2 },
+    ],
+    items: [
+      { name: 'Pyroarite', usage: 100 },
+    ],
+    nature: 'Timid',
+    ability: 'Fire Mane',
+    spSpread: { hp: 6, atk: 0, def: 0, spa: 28, spd: 0, spe: 32 },
+  },
+
+  'Mega Falinks': {
+    role: 'Physical Sweeper (Iron Fist)',
+    moves: [
+      { name: 'No Retreat',    usage: 88.4 },
+      { name: 'Close Combat',  usage: 82.7 },
+      { name: 'Thunder Punch', usage: 68.3 },
+      { name: 'Protect',       usage: 64.8 },
+    ],
+    items: [
+      { name: 'Falinxite', usage: 100 },
+    ],
+    nature: 'Adamant',
+    ability: 'Iron Fist',
+    spSpread: { hp: 2, atk: 32, def: 0, spa: 0, spd: 0, spe: 32 },
+  },
+
+  'Mega Scrafty': {
+    role: 'Physical Attacker (Moxie)',
+    moves: [
+      { name: 'High Jump Kick', usage: 91.4 },
+      { name: 'Crunch',         usage: 82.6 },
+      { name: 'Fake Out',       usage: 71.3 },
+      { name: 'Protect',        usage: 64.7 },
+    ],
+    items: [
+      { name: 'Scraftynite', usage: 100 },
+    ],
+    nature: 'Adamant',
+    ability: 'Moxie',
+    spSpread: { hp: 20, atk: 32, def: 0, spa: 0, spd: 14, spe: 0 },
+  },
+
   // ── Rotom variants ───────────────────────────────────────────────────────
 
   'Rotom-Frost': {

@@ -44,7 +44,67 @@ export const MB_SUPPLEMENT: Pokemon[] = [
     hp: 50, atk: 65, def: 107, spa: 105, spd: 107, spe: 86, total: 520,
   },
 
-  // ── Mega Pokemon missing from base-stats.json (in roster but 0 stats) ────
+  // ── Regulation M-B Megas: new Champions-exclusive forms (not in live repo) ─
+  // Stats marked with * are estimated; confirmed fields noted in comments.
+  {
+    // Confirmed: Fighting/Flying type, ability Contrary, stone Staraptite
+    name: 'Mega Staraptor', dexNumber: 398, form: 'Mega',
+    types: ['Fighting', 'Flying'],
+    abilities: { '0': 'Contrary' },
+    championsVerified: false,
+    hp: 85, atk: 155, def: 80, spa: 55, spd: 70, spe: 140, total: 585,
+  },
+  {
+    // Confirmed: ability Electric Surge, ATK 135, DEF 95, SpD 95, HP 60, SpA 90
+    // Type Electric/Fighting inferred from Volt Tackle + Close Combat usage
+    name: 'Mega Raichu X', dexNumber: 26, form: 'Mega',
+    types: ['Electric', 'Fighting'],
+    abilities: { '0': 'Electric Surge' },
+    championsVerified: false,
+    hp: 60, atk: 135, def: 95, spa: 90, spd: 95, spe: 110, total: 585,
+  },
+  {
+    // Confirmed: HP 60, ATK 100, DEF 55, SpA 160, SpD 80, SPE 130 (total 585)
+    name: 'Mega Raichu Y', dexNumber: 26, form: 'Mega',
+    types: ['Electric'],
+    abilities: { '0': 'Galvanize' },
+    championsVerified: false,
+    hp: 60, atk: 100, def: 55, spa: 160, spd: 80, spe: 130, total: 585,
+  },
+  {
+    // Champions-exclusive Mega; ability Eelevate confirmed (new ability)
+    name: 'Mega Eelektross', dexNumber: 604, form: 'Mega',
+    types: ['Electric'],
+    abilities: { '0': 'Eelevate' },
+    championsVerified: false,
+    hp: 85, atk: 145, def: 95, spa: 135, spd: 95, spe: 60, total: 615,
+  },
+  {
+    // Champions-exclusive Mega; ability Fire Mane confirmed (new ability)
+    name: 'Mega Pyroar', dexNumber: 668, form: 'Mega',
+    types: ['Fire', 'Normal'],
+    abilities: { '0': 'Fire Mane' },
+    championsVerified: false,
+    hp: 86, atk: 80, def: 82, spa: 149, spd: 84, spe: 126, total: 607,
+  },
+  {
+    // Champions-exclusive Mega
+    name: 'Mega Falinks', dexNumber: 870, form: 'Mega',
+    types: ['Fighting'],
+    abilities: { '0': 'Iron Fist' },
+    championsVerified: false,
+    hp: 65, atk: 140, def: 130, spa: 70, spd: 80, spe: 95, total: 580,
+  },
+  {
+    // Champions-exclusive Mega
+    name: 'Mega Scrafty', dexNumber: 560, form: 'Mega',
+    types: ['Dark', 'Fighting'],
+    abilities: { '0': 'Moxie' },
+    championsVerified: false,
+    hp: 75, atk: 130, def: 125, spa: 45, spd: 125, spe: 88, total: 588,
+  },
+
+  // ── Regulation M-B Megas: missing from base-stats.json ───────────────────
   // These ARE in the live roster.json (championsVerified: true) but have no
   // entry in base-stats.json, so they appear with all-zero stats.
   // The hook uses these as a stat fallback; types/abilities come from the roster.
