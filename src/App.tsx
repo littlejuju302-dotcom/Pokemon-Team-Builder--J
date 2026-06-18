@@ -95,19 +95,20 @@ function TeamBuilder() {
         {/* Right: tabs */}
         <div className="flex-1 min-w-0">
           {/* Tab bar */}
-          <div className="flex gap-1 bg-slate-800/50 p-1 rounded-xl mb-4">
+          <div className="flex gap-1 bg-slate-800/50 p-1 rounded-xl mb-4 overflow-x-auto no-scrollbar">
             {tabs.map(t => (
               <button
                 key={t.id}
+                title={t.label}
                 onClick={() => setTab(t.id)}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                className={`flex-1 flex-shrink-0 flex items-center justify-center gap-1.5 py-2 px-2 sm:px-3 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                   tab === t.id
                     ? 'bg-violet-600 text-white shadow-lg'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
                 }`}
               >
                 {t.icon}
-                {t.label}
+                <span className="hidden sm:inline">{t.label}</span>
               </button>
             ))}
           </div>
