@@ -3,7 +3,7 @@ import { X, ChevronDown, ChevronUp, Check, Zap } from 'lucide-react';
 import { TypeBadge } from './TypeBadge';
 import { PokemonSprite } from './PokemonSprite';
 import { MoveSelector } from './MoveSelector';
-import { useNatures, usePokemonData, useMoves, useLearnsets } from '../hooks/usePokemonData';
+import { useNatures, usePokemonData, useMoves } from '../hooks/usePokemonData';
 import { getCompetitiveSet } from '../data/competitiveSets';
 import { AbilityBadge } from './AbilityBadge';
 import { ALL_ITEMS } from '../data/items';
@@ -49,7 +49,6 @@ export function TeamSlot({
   const { data: natures } = useNatures();
   const { data: allPokemon } = usePokemonData();
   const { data: allMoves } = useMoves();
-  const { data: learnsets } = useLearnsets();
 
   const megaForms = useMemo(() => {
     if (!allPokemon || !member) return [];
