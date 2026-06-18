@@ -97,6 +97,19 @@ export function useTeam() {
     });
   }, []);
 
+  const setSpAllocation = useCallback((slotIndex: number, stat: string, value: number) => {
+    setMembers(prev => {
+      const next = [...prev];
+      const member = next[slotIndex];
+      if (!member) return prev;
+      next[slotIndex] = {
+        ...member,
+        spAllocation: { ...member.spAllocation, [stat]: Math.max(0, Math.min(32, value)) },
+      };
+      return next;
+    });
+  }, []);
+
   const loadTeam = useCallback((newMembers: (TeamMember | null)[]) => {
     setMembers(newMembers.length === TEAM_SIZE ? newMembers : Array(TEAM_SIZE).fill(null));
   }, []);
@@ -116,6 +129,7 @@ export function useTeam() {
     setItem,
     setMegaEvolved,
     setSelectedAbility,
+    setSpAllocation,
     loadTeam,
     isFull,
     count,

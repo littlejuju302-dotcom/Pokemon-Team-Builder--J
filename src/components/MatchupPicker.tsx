@@ -5,6 +5,8 @@ import { usePokemonData } from '../hooks/usePokemonData';
 import { getOffensiveEffectiveness, getDefensiveEffectiveness } from '../data/typeChart';
 import { getMetaWeight } from '../data/metaWeights';
 import { ALL_ITEMS, ATTACKER_ITEM_EFFECTS, DEFENDER_ITEM_EFFECTS } from '../data/items';
+import { useNatures } from '../hooks/usePokemonData';
+import { getNatureMult, calcFinalStat } from '../utils/stats';
 import type { Pokemon, TeamMember, Move, PokemonType } from '../types/pokemon';
 
 interface Props {
@@ -119,6 +121,8 @@ function computeDamage(
   atkItem: string,
   defItem: string,
   isContact: boolean,
+  atkFinalAtk?: number,   // pre-computed atk with nature+SP (overrides calcStat)
+  atkFinalSpa?: number,   // pre-computed spa with nature+SP
 ): DamageResult | null {
   if (!move.power || move.category === 'Status') return null;
 
@@ -132,7 +136,6 @@ function computeDamage(
   if (typeEff === 0) return { min: 0, max: 0, defHP };
 
   const isPhys = move.category === 'Physical';
-  const baseAtk = isPhys ? attacker.atk : attacker.spa;
   const baseDef = isPhys ? defender.def : defender.spd;
 
   // Attacker ability stat multipliers
@@ -150,7 +153,11 @@ function computeDamage(
   const defItemEff = DEFENDER_ITEM_EFFECTS[defItem] ?? {};
   const defItemStatMult = (defItemEff.spdMult && !isPhys) ? defItemEff.spdMult : 1;
 
-  const effAtk = Math.floor(calcStat(baseAtk) * stageMult(atkStage) * atkStatMult * atkItemStatMult);
+  // Use pre-computed stat (with nature+SP) if provided, else fall back to base formula
+  const baseAtkStat = isPhys
+    ? (atkFinalAtk ?? calcStat(attacker.atk))
+    : (atkFinalSpa ?? calcStat(attacker.spa));
+  const effAtk = Math.floor(baseAtkStat * stageMult(atkStage) * atkStatMult * atkItemStatMult);
   const effDef = Math.floor(calcStat(baseDef) * stageMult(defStage) * defItemStatMult);
 
   const base = Math.floor(Math.floor(Math.floor(2 * 50 / 5 + 2) * move.power * effAtk / effDef) / 50) + 2;
@@ -331,6 +338,7 @@ function ItemSearch({
 
 export function MatchupPicker({ members }: Props) {
   const { data: allPokemon } = usePokemonData();
+  const { data: natures } = useNatures();
   const [format, setFormat] = useState<'singles' | 'doubles'>('doubles');
   const [opponents, setOpponents] = useState<(Pokemon | null)[]>(Array(6).fill(null));
 
@@ -401,14 +409,30 @@ export function MatchupPicker({ members }: Props) {
   const defAbilityOptions = dmgDefender ? Object.values(dmgDefender.abilities) : [];
   const effectiveDefAbility = dmgDefAbility || defAbilityOptions[0] || '';
 
+  // Pre-compute attacker's actual stats using their nature + SP allocation
+  const atkFinalAtk = useMemo(() => {
+    if (!dmgAttacker || !dmgAttackerPokemon) return undefined;
+    const sp = dmgAttacker.spAllocation['atk'] ?? 0;
+    const mult = getNatureMult('atk', dmgAttacker.nature, natures);
+    return calcFinalStat(dmgAttackerPokemon.atk, false, sp, mult);
+  }, [dmgAttacker, dmgAttackerPokemon, natures]);
+
+  const atkFinalSpa = useMemo(() => {
+    if (!dmgAttacker || !dmgAttackerPokemon) return undefined;
+    const sp = dmgAttacker.spAllocation['spa'] ?? 0;
+    const mult = getNatureMult('spa', dmgAttacker.nature, natures);
+    return calcFinalStat(dmgAttackerPokemon.spa, false, sp, mult);
+  }, [dmgAttacker, dmgAttackerPokemon, natures]);
+
   const dmgResult = useMemo(() => {
     if (!dmgAttackerPokemon || !dmgDefender || !dmgMove) return null;
     return computeDamage(
       dmgMove, dmgAttackerPokemon, dmgDefender,
       atkStage, defStage, weather, reflect, lightScreen, format === 'doubles',
       atkAbility, effectiveDefAbility, atkItem, dmgDefItem, isContact,
+      atkFinalAtk, atkFinalSpa,
     );
-  }, [dmgAttackerPokemon, dmgDefender, dmgMove, atkStage, defStage, weather, reflect, lightScreen, format, atkAbility, effectiveDefAbility, atkItem, dmgDefItem, isContact]);
+  }, [dmgAttackerPokemon, dmgDefender, dmgMove, atkStage, defStage, weather, reflect, lightScreen, format, atkAbility, effectiveDefAbility, atkItem, dmgDefItem, isContact, atkFinalAtk, atkFinalSpa]);
 
   const selectOpponent = (index: number, pokemon: Pokemon) => {
     setOpponents(prev => { const n = [...prev]; n[index] = pokemon; return n; });
@@ -599,10 +623,20 @@ export function MatchupPicker({ members }: Props) {
                         </option>
                       ))}
                     </select>
-                    {(atkAbility || atkItem) && (
+                    {(atkAbility || atkItem || dmgAttacker?.nature !== 'Hardy') && (
                       <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5">
                         {atkAbility && <span className="text-[10px] text-violet-400">{atkAbility}</span>}
+                        {dmgAttacker?.nature && dmgAttacker.nature !== 'Hardy' && (
+                          <span className="text-[10px] text-slate-500">{dmgAttacker.nature}</span>
+                        )}
                         {atkItem && <span className="text-[10px] text-amber-400">{atkItem}</span>}
+                        {(atkFinalAtk !== undefined || atkFinalSpa !== undefined) && (
+                          <span className="text-[10px] text-slate-600">
+                            {atkFinalAtk !== undefined ? `ATK ${atkFinalAtk}` : ''}
+                            {atkFinalAtk !== undefined && atkFinalSpa !== undefined ? ' · ' : ''}
+                            {atkFinalSpa !== undefined ? `SPA ${atkFinalSpa}` : ''}
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>

@@ -1,14 +1,14 @@
 import { useState, useMemo } from 'react';
-import { X, ChevronDown, ChevronUp, Check } from 'lucide-react';
+import { X, ChevronDown, ChevronUp, Check, Zap } from 'lucide-react';
 import { TypeBadge } from './TypeBadge';
-import { StatBar } from './StatBar';
 import { PokemonSprite } from './PokemonSprite';
 import { MoveSelector } from './MoveSelector';
-import { useNatures, usePokemonData } from '../hooks/usePokemonData';
+import { useNatures, usePokemonData, useMoves, useLearnsets } from '../hooks/usePokemonData';
 import { getCompetitiveSet } from '../data/competitiveSets';
 import { AbilityBadge } from './AbilityBadge';
 import { ALL_ITEMS } from '../data/items';
-import type { TeamMember, Move } from '../types/pokemon';
+import { getNatureMult, calcFinalStat } from '../utils/stats';
+import type { TeamMember, Move, BaseStats } from '../types/pokemon';
 
 interface Props {
   member: TeamMember | null;
@@ -19,26 +19,37 @@ interface Props {
   onSetItem: (i: number, item: string) => void;
   onSetMegaEvolved: (i: number, evolved: boolean, formName?: string) => void;
   onSetSelectedAbility: (i: number, ability: string) => void;
+  onSetSpAllocation: (i: number, stat: string, value: number) => void;
 }
 
-const SP_STAT_LABELS = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'] as const;
-const SP_STAT_DISPLAY: Record<string, string> = {
+const SP_STATS = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'] as const;
+type SpStat = typeof SP_STATS[number];
+
+const SP_LABELS: Record<SpStat, string> = {
   hp: 'HP', atk: 'ATK', def: 'DEF', spa: 'SPA', spd: 'SPD', spe: 'SPE',
 };
 
-function spBarColor(value: number) {
-  if (value >= 32) return 'bg-amber-400';
-  if (value >= 16) return 'bg-violet-500';
-  if (value > 0)  return 'bg-blue-500';
-  return '';
-}
+const STAT_COLORS: Record<SpStat, string> = {
+  hp:  '#ff5959',
+  atk: '#f5ac78',
+  def: '#fae078',
+  spa: '#9db7f5',
+  spd: '#a7db8d',
+  spe: '#fa92b2',
+};
 
-export function TeamSlot({ member, slotIndex, onRemove, onSetMoves, onSetNature, onSetItem, onSetMegaEvolved, onSetSelectedAbility }: Props) {
+export function TeamSlot({
+  member, slotIndex,
+  onRemove, onSetMoves, onSetNature, onSetItem, onSetMegaEvolved, onSetSelectedAbility, onSetSpAllocation,
+}: Props) {
   const [expanded, setExpanded] = useState(false);
   const [itemQuery, setItemQuery] = useState('');
   const [itemOpen, setItemOpen] = useState(false);
+
   const { data: natures } = useNatures();
   const { data: allPokemon } = usePokemonData();
+  const { data: allMoves } = useMoves();
+  const { data: learnsets } = useLearnsets();
 
   const megaForms = useMemo(() => {
     if (!allPokemon || !member) return [];
@@ -73,6 +84,40 @@ export function TeamSlot({ member, slotIndex, onRemove, onSetMoves, onSetNature,
     member.megaEvolved && member.megaFormName ? member.megaFormName : pokemon.name
   );
 
+  // SP totals
+  const totalSP = SP_STATS.reduce((sum, s) => sum + (member.spAllocation[s] ?? 0), 0);
+  const remainingSP = 66 - totalSP;
+
+  // Per-stat nature multipliers
+  const natureMults = useMemo(() => {
+    const result = {} as Record<SpStat, number>;
+    for (const s of SP_STATS) result[s] = s === 'hp' ? 1 : getNatureMult(s, nature, natures);
+    return result;
+  }, [nature, natures]);
+
+  // Final stats at lv50 with nature + SP
+  const finalStats = useMemo(() => {
+    const result = {} as Record<SpStat, number>;
+    for (const s of SP_STATS) {
+      result[s] = calcFinalStat(
+        displayPokemon[s as keyof typeof displayPokemon] as number,
+        s === 'hp',
+        member.spAllocation[s as keyof BaseStats] ?? 0,
+        natureMults[s],
+      );
+    }
+    return result;
+  }, [displayPokemon, member.spAllocation, natureMults]);
+
+  const setSP = (stat: SpStat, value: number) => {
+    onSetSpAllocation(slotIndex, stat, value);
+  };
+
+  const maxSPForStat = (stat: SpStat) => {
+    const cur = member.spAllocation[stat as keyof BaseStats] ?? 0;
+    return Math.min(32, cur + remainingSP);
+  };
+
   const handleMegaEvolve = (megaName: string) => {
     const megaSet = getCompetitiveSet(megaName);
     const stone = megaSet?.items[0]?.name;
@@ -89,6 +134,28 @@ export function TeamSlot({ member, slotIndex, onRemove, onSetMoves, onSetNature,
     onSetMegaEvolved(slotIndex, false, undefined);
     const firstAbility = Object.values(pokemon.abilities)[0];
     if (firstAbility) onSetSelectedAbility(slotIndex, firstAbility);
+  };
+
+  const applyCompMove = (moveName: string) => {
+    if (!allMoves || moves.length >= 4 || moves.some(m => m.name === moveName)) return;
+    const move = allMoves.find(m => m.name === moveName);
+    if (move) onSetMoves(slotIndex, [...moves, move]);
+  };
+
+  const applyFullSet = () => {
+    if (!compSet) return;
+    onSetNature(slotIndex, compSet.nature);
+    onSetSelectedAbility(slotIndex, compSet.ability);
+    if (compSet.items[0]) onSetItem(slotIndex, compSet.items[0].name);
+    for (const s of SP_STATS) onSetSpAllocation(slotIndex, s, compSet.spSpread[s] ?? 0);
+    if (allMoves) {
+      const newMoves: Move[] = [];
+      for (const cm of compSet.moves.slice(0, 4)) {
+        const mv = allMoves.find(m => m.name === cm.name);
+        if (mv) newMoves.push(mv);
+      }
+      if (newMoves.length > 0) onSetMoves(slotIndex, newMoves);
+    }
   };
 
   return (
@@ -108,8 +175,8 @@ export function TeamSlot({ member, slotIndex, onRemove, onSetMoves, onSetNature,
             )}
             {displayPokemon.types.map(t => <TypeBadge key={t} type={t} small />)}
           </div>
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-xs text-slate-500">BST {displayPokemon.total}</span>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            <span className="text-xs text-slate-500">{nature}</span>
             {member.selectedAbility && (
               <span className="text-[10px] text-violet-400">{member.selectedAbility}</span>
             )}
@@ -117,6 +184,9 @@ export function TeamSlot({ member, slotIndex, onRemove, onSetMoves, onSetNature,
               <span className="text-[10px] bg-amber-900/50 border border-amber-700/50 text-amber-300 px-1.5 py-0.5 rounded">
                 {item}
               </span>
+            )}
+            {totalSP > 0 && (
+              <span className="text-[10px] text-slate-500">{totalSP}/66 SP</span>
             )}
           </div>
           <div className="flex flex-wrap gap-1 mt-1">
@@ -151,24 +221,16 @@ export function TeamSlot({ member, slotIndex, onRemove, onSetMoves, onSetNature,
                 {member.megaEvolved ? (
                   <>
                     <span className="text-xs text-amber-300 font-medium">{member.megaFormName}</span>
-                    <button
-                      onClick={handleRevert}
-                      className="text-xs bg-slate-700 border border-slate-600 text-slate-300 hover:border-red-500 hover:text-red-400 px-2 py-1 rounded-lg transition-colors"
-                    >
+                    <button onClick={handleRevert} className="text-xs bg-slate-700 border border-slate-600 text-slate-300 hover:border-red-500 hover:text-red-400 px-2 py-1 rounded-lg transition-colors">
                       ↩ Revert
                     </button>
                   </>
                 ) : (
                   megaForms.map(mega => {
-                    const label = mega.name === `Mega ${pokemon.name}`
-                      ? 'Mega Evolve'
-                      : mega.name.replace(`Mega ${pokemon.name} `, '');
+                    const label = mega.name === `Mega ${pokemon.name}` ? 'Mega Evolve' : mega.name.replace(`Mega ${pokemon.name} `, '');
                     return (
-                      <button
-                        key={mega.name}
-                        onClick={() => handleMegaEvolve(mega.name)}
-                        className="text-xs bg-amber-600/20 border border-amber-500/50 text-amber-400 hover:bg-amber-600/40 hover:border-amber-400 px-2.5 py-1 rounded-lg transition-colors font-medium"
-                      >
+                      <button key={mega.name} onClick={() => handleMegaEvolve(mega.name)}
+                        className="text-xs bg-amber-600/20 border border-amber-500/50 text-amber-400 hover:bg-amber-600/40 hover:border-amber-400 px-2.5 py-1 rounded-lg transition-colors font-medium">
                         ⚡ {label}
                       </button>
                     );
@@ -178,19 +240,78 @@ export function TeamSlot({ member, slotIndex, onRemove, onSetMoves, onSetNature,
             </div>
           )}
 
-          {/* Base Stats */}
+          {/* Stats with SP allocation */}
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
-              {member.megaEvolved ? 'Mega Form Stats' : 'Base Stats'}
-            </p>
-            <div className="flex flex-col gap-1">
-              <StatBar label="HP"  value={displayPokemon.hp} />
-              <StatBar label="ATK" value={displayPokemon.atk} />
-              <StatBar label="DEF" value={displayPokemon.def} />
-              <StatBar label="SPA" value={displayPokemon.spa} />
-              <StatBar label="SPD" value={displayPokemon.spd} />
-              <StatBar label="SPE" value={displayPokemon.spe} />
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                {member.megaEvolved ? 'Mega Form Stats' : 'Stats'} · Lv.50
+              </p>
+              <span className={`text-[10px] font-medium ${remainingSP === 0 ? 'text-amber-400' : 'text-slate-500'}`}>
+                {totalSP}/66 SP
+              </span>
             </div>
+
+            <div className="flex flex-col gap-1.5">
+              {SP_STATS.map(stat => {
+                const sp = member.spAllocation[stat as keyof BaseStats] ?? 0;
+                const mult = natureMults[stat];
+                const finalVal = finalStats[stat];
+                const maxVal = 300;
+                const canAdd = sp < 32 && remainingSP > 0;
+                const canSub = sp > 0;
+                const canMax = maxSPForStat(stat) > sp;
+
+                return (
+                  <div key={stat} className="flex items-center gap-1.5">
+                    {/* Stat label — colored by nature */}
+                    <span className={`text-xs font-bold w-9 flex-shrink-0 ${
+                      mult > 1 ? 'text-rose-400' : mult < 1 ? 'text-sky-400' : 'text-slate-400'
+                    }`}>
+                      {SP_LABELS[stat]}{mult > 1 ? '+' : mult < 1 ? '−' : ''}
+                    </span>
+
+                    {/* Final stat value */}
+                    <span className="w-8 text-right font-mono text-slate-100 text-xs font-semibold flex-shrink-0">{finalVal}</span>
+
+                    {/* Bar */}
+                    <div className="flex-1 h-2 rounded-full bg-slate-700 min-w-0">
+                      <div
+                        className="h-2 rounded-full transition-all duration-200"
+                        style={{
+                          width: `${Math.min(100, (finalVal / maxVal) * 100)}%`,
+                          backgroundColor: STAT_COLORS[stat],
+                        }}
+                      />
+                    </div>
+
+                    {/* SP controls */}
+                    <div className="flex items-center gap-0.5 flex-shrink-0">
+                      <button
+                        onClick={() => setSP(stat, sp - 1)}
+                        disabled={!canSub}
+                        className="w-5 h-5 text-[10px] bg-slate-700 border border-slate-600 rounded hover:bg-slate-600 disabled:opacity-25 disabled:cursor-not-allowed leading-none"
+                      >−</button>
+                      <span className="text-[10px] w-5 text-center font-mono text-slate-300">{sp}</span>
+                      <button
+                        onClick={() => setSP(stat, sp + 1)}
+                        disabled={!canAdd}
+                        className="w-5 h-5 text-[10px] bg-slate-700 border border-slate-600 rounded hover:bg-slate-600 disabled:opacity-25 disabled:cursor-not-allowed leading-none"
+                      >+</button>
+                      {canMax && (
+                        <button
+                          onClick={() => setSP(stat, maxSPForStat(stat))}
+                          className="text-[9px] text-slate-500 hover:text-violet-400 ml-0.5 w-5 text-center transition-colors"
+                        >MAX</button>
+                      )}
+                      {!canMax && <span className="w-5 ml-0.5" />}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {remainingSP > 0 && (
+              <p className="text-[10px] text-slate-600 mt-1.5">{remainingSP} SP remaining</p>
+            )}
           </div>
 
           {/* Nature */}
@@ -235,13 +356,8 @@ export function TeamSlot({ member, slotIndex, onRemove, onSetMoves, onSetNature,
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Item</p>
             {item && (
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs bg-amber-900/50 border border-amber-700/50 text-amber-300 px-2 py-1 rounded-lg font-medium">
-                  {item}
-                </span>
-                <button
-                  onClick={() => onSetItem(slotIndex, '')}
-                  className="text-slate-500 hover:text-red-400 transition-colors"
-                >
+                <span className="text-xs bg-amber-900/50 border border-amber-700/50 text-amber-300 px-2 py-1 rounded-lg font-medium">{item}</span>
+                <button onClick={() => onSetItem(slotIndex, '')} className="text-slate-500 hover:text-red-400 transition-colors">
                   <X size={12} />
                 </button>
               </div>
@@ -262,9 +378,7 @@ export function TeamSlot({ member, slotIndex, onRemove, onSetMoves, onSetNature,
                     <button
                       key={it}
                       onMouseDown={() => { onSetItem(slotIndex, it); setItemQuery(''); setItemOpen(false); }}
-                      className={`w-full text-left px-2 py-1.5 text-xs hover:bg-slate-700 border-b border-slate-700 last:border-0 ${
-                        item === it ? 'text-amber-300' : 'text-slate-200'
-                      }`}
+                      className={`w-full text-left px-2 py-1.5 text-xs hover:bg-slate-700 border-b border-slate-700 last:border-0 ${item === it ? 'text-amber-300' : 'text-slate-200'}`}
                     >
                       {it}
                     </button>
@@ -277,56 +391,104 @@ export function TeamSlot({ member, slotIndex, onRemove, onSetMoves, onSetNature,
           {/* Moves */}
           <div>
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Moves (max 4)</p>
-            <MoveSelector
-              pokemon={pokemon}
-              selectedMoves={moves}
-              onChange={m => onSetMoves(slotIndex, m)}
-            />
+            <MoveSelector pokemon={pokemon} selectedMoves={moves} onChange={m => onSetMoves(slotIndex, m)} />
           </div>
 
-          {/* Competitive Build */}
+          {/* Competitive Build Reference */}
           {compSet && (
             <div className="bg-slate-700/40 border border-slate-600/60 rounded-xl p-3 flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-violet-300 uppercase tracking-wide">Competitive Build Reference</p>
-                <span className="text-[10px] text-slate-400 bg-slate-700 px-2 py-0.5 rounded-full">{compSet.role}</span>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <p className="text-xs font-semibold text-violet-300 uppercase tracking-wide">Competitive Build</p>
+                  <span className="text-[10px] text-slate-400 bg-slate-700 px-2 py-0.5 rounded-full">{compSet.role}</span>
+                </div>
+                <button
+                  onClick={applyFullSet}
+                  className="flex items-center gap-1 text-[10px] bg-violet-700/40 border border-violet-600/50 text-violet-300 hover:bg-violet-700/60 px-2 py-1 rounded-lg transition-colors font-medium flex-shrink-0"
+                >
+                  <Zap size={9} />
+                  Apply All
+                </button>
               </div>
 
-              {/* Recommended Moves with usage bars */}
+              {/* Recommended Moves */}
               <div>
-                <p className="text-[10px] text-slate-500 mb-1.5">Top moves by tournament usage</p>
-                <div className="flex flex-col gap-1.5">
+                <p className="text-[10px] text-slate-500 mb-1.5">Moves — click to add</p>
+                <div className="flex flex-col gap-1">
                   {compSet.moves.map(mv => {
                     const isSelected = moves.some(m => m.name === mv.name);
+                    const canAdd = !isSelected && moves.length < 4 && !!allMoves;
                     return (
                       <div key={mv.name} className="flex items-center gap-2">
-                        <div className={`w-3.5 h-3.5 flex-shrink-0 rounded-full flex items-center justify-center ${
-                          isSelected ? 'bg-green-500' : 'bg-slate-600'
-                        }`}>
-                          {isSelected && <Check size={8} className="text-white" />}
-                        </div>
-                        <span className={`text-xs w-28 truncate flex-shrink-0 ${isSelected ? 'text-green-400 font-medium' : 'text-slate-300'}`}>
-                          {mv.name}
-                        </span>
-                        <div className="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                        <button
+                          onClick={() => applyCompMove(mv.name)}
+                          disabled={isSelected || moves.length >= 4}
+                          className={`flex items-center gap-1.5 flex-1 min-w-0 text-left transition-colors ${
+                            isSelected
+                              ? 'cursor-default'
+                              : canAdd
+                              ? 'hover:text-slate-100'
+                              : 'opacity-40 cursor-not-allowed'
+                          }`}
+                        >
+                          <div className={`w-3.5 h-3.5 flex-shrink-0 rounded-full flex items-center justify-center ${
+                            isSelected ? 'bg-green-500' : 'bg-slate-600'
+                          }`}>
+                            {isSelected && <Check size={8} className="text-white" />}
+                          </div>
+                          <span className={`text-xs truncate ${isSelected ? 'text-green-400 font-medium' : 'text-slate-300'}`}>
+                            {mv.name}
+                          </span>
+                        </button>
+                        <div className="flex-1 max-w-[80px] h-1.5 bg-slate-700 rounded-full overflow-hidden">
                           <div
-                            className={`h-full rounded-full transition-all ${isSelected ? 'bg-green-500' : 'bg-violet-500'}`}
+                            className={`h-full rounded-full ${isSelected ? 'bg-green-500' : 'bg-violet-500'}`}
                             style={{ width: `${mv.usage}%` }}
                           />
                         </div>
-                        <span className="text-[10px] text-slate-400 w-9 text-right flex-shrink-0">
-                          {mv.usage.toFixed(0)}%
-                        </span>
+                        <span className="text-[10px] text-slate-400 w-9 text-right flex-shrink-0">{mv.usage.toFixed(0)}%</span>
                       </div>
                     );
                   })}
                 </div>
               </div>
 
+              {/* Nature + Ability quick-apply */}
+              <div className="flex flex-wrap gap-3">
+                <div>
+                  <p className="text-[10px] text-slate-500 mb-1">Nature</p>
+                  <button
+                    onClick={() => onSetNature(slotIndex, compSet.nature)}
+                    className={`text-xs px-2 py-0.5 rounded border transition-colors ${
+                      nature === compSet.nature
+                        ? 'bg-green-700/30 border-green-600/50 text-green-400 cursor-default'
+                        : 'bg-slate-700 border-slate-600 text-slate-200 hover:border-violet-500 hover:text-violet-300'
+                    }`}
+                  >
+                    {compSet.nature}
+                    {nature === compSet.nature && <span className="ml-1">✓</span>}
+                  </button>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-500 mb-1">Ability</p>
+                  <button
+                    onClick={() => onSetSelectedAbility(slotIndex, compSet.ability)}
+                    className={`text-xs px-2 py-0.5 rounded border transition-colors ${
+                      member.selectedAbility === compSet.ability
+                        ? 'bg-green-700/30 border-green-600/50 text-green-400 cursor-default'
+                        : 'bg-slate-700 border-slate-600 text-slate-200 hover:border-violet-500 hover:text-violet-300'
+                    }`}
+                  >
+                    {compSet.ability}
+                    {member.selectedAbility === compSet.ability && <span className="ml-1">✓</span>}
+                  </button>
+                </div>
+              </div>
+
               {/* Recommended Items */}
               {compSet.items.length > 0 && (
                 <div>
-                  <p className="text-[10px] text-slate-500 mb-1.5">Recommended items (click to select)</p>
+                  <p className="text-[10px] text-slate-500 mb-1.5">Items — click to select</p>
                   <div className="flex flex-wrap gap-1.5">
                     {compSet.items.map(it => {
                       const isSelected = item === it.name;
@@ -350,43 +512,32 @@ export function TeamSlot({ member, slotIndex, onRemove, onSetMoves, onSetNature,
                 </div>
               )}
 
-              {/* Nature + Ability */}
-              <div className="flex flex-wrap gap-4">
-                <div>
-                  <p className="text-[10px] text-slate-500 mb-0.5">Nature</p>
-                  <span className={`text-xs font-medium ${nature === compSet.nature ? 'text-green-400' : 'text-slate-200'}`}>
-                    {compSet.nature}
-                    {nature === compSet.nature && <span className="ml-1 text-green-400">✓</span>}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-[10px] text-slate-500 mb-0.5">Ability</p>
-                  <span className={`text-xs font-medium ${member.selectedAbility === compSet.ability ? 'text-green-400' : 'text-slate-200'}`}>
-                    {compSet.ability}
-                    {member.selectedAbility === compSet.ability && <span className="ml-1 text-green-400">✓</span>}
-                  </span>
-                </div>
-              </div>
-
-              {/* SP Spread */}
+              {/* SP Spread quick-apply */}
               <div>
-                <p className="text-[10px] text-slate-500 mb-1.5">
-                  SP Investment <span className="text-slate-600">(66 pts total · max 32 per stat)</span>
-                </p>
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-[10px] text-slate-500">SP Spread</p>
+                  <button
+                    onClick={() => { for (const s of SP_STATS) onSetSpAllocation(slotIndex, s, compSet.spSpread[s] ?? 0); }}
+                    className="text-[10px] text-violet-400 hover:text-violet-300 underline transition-colors"
+                  >
+                    Apply spread
+                  </button>
+                </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                  {SP_STAT_LABELS.map(stat => {
-                    const value = compSet.spSpread[stat];
+                  {SP_STATS.map(stat => {
+                    const value = compSet.spSpread[stat] ?? 0;
+                    const currentSP = member.spAllocation[stat as keyof BaseStats] ?? 0;
                     return (
                       <div key={stat} className="flex items-center gap-1.5">
-                        <span className="text-[10px] text-slate-500 w-7 flex-shrink-0">{SP_STAT_DISPLAY[stat]}</span>
+                        <span className="text-[10px] text-slate-500 w-7 flex-shrink-0">{SP_LABELS[stat]}</span>
                         <div className="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
                           <div
-                            className={`h-full rounded-full ${spBarColor(value)}`}
+                            className={`h-full rounded-full ${currentSP === value ? 'bg-green-500' : 'bg-violet-500'}`}
                             style={{ width: `${(value / 32) * 100}%` }}
                           />
                         </div>
                         <span className={`text-[10px] w-6 text-right flex-shrink-0 font-medium ${
-                          value >= 32 ? 'text-amber-400' : value > 0 ? 'text-slate-300' : 'text-slate-600'
+                          currentSP === value ? 'text-green-400' : value >= 32 ? 'text-amber-400' : value > 0 ? 'text-slate-300' : 'text-slate-600'
                         }`}>
                           {value > 0 ? value : '–'}
                         </span>

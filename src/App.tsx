@@ -15,7 +15,7 @@ type Tab = 'browse' | 'coverage' | 'recommendations' | 'matchup';
 
 function TeamBuilder() {
   const [tab, setTab] = useState<Tab>('browse');
-  const { members, addPokemon, removePokemon, setMoves, setNature, setItem, setMegaEvolved, setSelectedAbility, loadTeam, isFull, count, hasPokemon } = useTeam();
+  const { members, addPokemon, removePokemon, setMoves, setNature, setItem, setMegaEvolved, setSelectedAbility, setSpAllocation, loadTeam, isFull, count, hasPokemon } = useTeam();
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'browse', label: 'Trending', icon: <TrendingUp size={14} /> },
@@ -81,6 +81,7 @@ function TeamBuilder() {
                   onSetItem={setItem}
                   onSetMegaEvolved={setMegaEvolved}
                   onSetSelectedAbility={setSelectedAbility}
+                  onSetSpAllocation={setSpAllocation}
                 />
               ))}
             </div>
