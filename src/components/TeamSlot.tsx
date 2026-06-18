@@ -7,6 +7,7 @@ import { MoveSelector } from './MoveSelector';
 import { useNatures, usePokemonData } from '../hooks/usePokemonData';
 import { getCompetitiveSet } from '../data/competitiveSets';
 import { AbilityBadge } from './AbilityBadge';
+import { ALL_ITEMS } from '../data/items';
 import type { TeamMember, Move } from '../types/pokemon';
 
 interface Props {
@@ -17,6 +18,7 @@ interface Props {
   onSetNature: (i: number, nature: string) => void;
   onSetItem: (i: number, item: string) => void;
   onSetMegaEvolved: (i: number, evolved: boolean, formName?: string) => void;
+  onSetSelectedAbility: (i: number, ability: string) => void;
 }
 
 const SP_STAT_LABELS = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'] as const;
@@ -31,8 +33,10 @@ function spBarColor(value: number) {
   return '';
 }
 
-export function TeamSlot({ member, slotIndex, onRemove, onSetMoves, onSetNature, onSetItem, onSetMegaEvolved }: Props) {
+export function TeamSlot({ member, slotIndex, onRemove, onSetMoves, onSetNature, onSetItem, onSetMegaEvolved, onSetSelectedAbility }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const [itemQuery, setItemQuery] = useState('');
+  const [itemOpen, setItemOpen] = useState(false);
   const { data: natures } = useNatures();
   const { data: allPokemon } = usePokemonData();
 
@@ -44,6 +48,11 @@ export function TeamSlot({ member, slotIndex, onRemove, onSetMoves, onSetNature,
       (p.name === `Mega ${baseName}` || p.name.startsWith(`Mega ${baseName} `))
     );
   }, [allPokemon, member?.pokemon.name]);
+
+  const itemSuggestions = useMemo(() => {
+    if (!itemQuery.trim()) return [];
+    return ALL_ITEMS.filter(i => i.toLowerCase().includes(itemQuery.toLowerCase())).slice(0, 8);
+  }, [itemQuery]);
 
   if (!member) {
     return (
@@ -69,10 +78,17 @@ export function TeamSlot({ member, slotIndex, onRemove, onSetMoves, onSetNature,
     const stone = megaSet?.items[0]?.name;
     if (stone && !item) onSetItem(slotIndex, stone);
     onSetMegaEvolved(slotIndex, true, megaName);
+    const megaPokemon = allPokemon?.find(p => p.name === megaName);
+    if (megaPokemon) {
+      const firstAbility = Object.values(megaPokemon.abilities)[0];
+      if (firstAbility) onSetSelectedAbility(slotIndex, firstAbility);
+    }
   };
 
   const handleRevert = () => {
     onSetMegaEvolved(slotIndex, false, undefined);
+    const firstAbility = Object.values(pokemon.abilities)[0];
+    if (firstAbility) onSetSelectedAbility(slotIndex, firstAbility);
   };
 
   return (
@@ -94,6 +110,9 @@ export function TeamSlot({ member, slotIndex, onRemove, onSetMoves, onSetNature,
           </div>
           <div className="flex items-center gap-2 mt-0.5">
             <span className="text-xs text-slate-500">BST {displayPokemon.total}</span>
+            {member.selectedAbility && (
+              <span className="text-[10px] text-violet-400">{member.selectedAbility}</span>
+            )}
             {item && (
               <span className="text-[10px] bg-amber-900/50 border border-amber-700/50 text-amber-300 px-1.5 py-0.5 rounded">
                 {item}
@@ -174,11 +193,102 @@ export function TeamSlot({ member, slotIndex, onRemove, onSetMoves, onSetNature,
             </div>
           </div>
 
+          {/* Nature */}
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Nature</p>
+            <select
+              value={nature}
+              onChange={e => onSetNature(slotIndex, e.target.value)}
+              className="bg-slate-700 border border-slate-600 text-slate-200 text-xs rounded-lg px-2 py-1.5 w-full"
+            >
+              {(natures ?? []).map(n => (
+                <option key={n.name} value={n.name}>
+                  {n.name}{n.increasedStat ? ` (+${n.increasedStat} / -${n.decreasedStat})` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Abilities */}
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">
+              {member.megaEvolved ? 'Mega Ability' : 'Abilities'}
+              {!member.megaEvolved && (
+                <span className="ml-1 font-normal normal-case text-slate-600">(select active · ⓘ for info)</span>
+              )}
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {Object.entries(displayPokemon.abilities).map(([slot, ability]) => (
+                <AbilityBadge
+                  key={slot}
+                  name={ability}
+                  isHidden={slot === 'H' && !member.megaEvolved}
+                  selected={member.selectedAbility === ability}
+                  onSelect={() => onSetSelectedAbility(slotIndex, ability)}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Item */}
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Item</p>
+            {item && (
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs bg-amber-900/50 border border-amber-700/50 text-amber-300 px-2 py-1 rounded-lg font-medium">
+                  {item}
+                </span>
+                <button
+                  onClick={() => onSetItem(slotIndex, '')}
+                  className="text-slate-500 hover:text-red-400 transition-colors"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            )}
+            <div className="relative">
+              <input
+                type="text"
+                value={itemQuery}
+                onChange={e => { setItemQuery(e.target.value); setItemOpen(true); }}
+                onFocus={() => setItemOpen(true)}
+                onBlur={() => setTimeout(() => setItemOpen(false), 150)}
+                placeholder={item ? 'Change item…' : 'Search all items…'}
+                className="w-full bg-slate-700 border border-slate-600 text-slate-200 text-xs rounded-lg px-2 py-1.5 placeholder:text-slate-500 focus:outline-none focus:border-violet-500"
+              />
+              {itemOpen && itemSuggestions.length > 0 && (
+                <div className="absolute z-30 top-full mt-0.5 left-0 right-0 bg-slate-800 border border-slate-600 rounded-lg shadow-xl overflow-y-auto max-h-40">
+                  {itemSuggestions.map(it => (
+                    <button
+                      key={it}
+                      onMouseDown={() => { onSetItem(slotIndex, it); setItemQuery(''); setItemOpen(false); }}
+                      className={`w-full text-left px-2 py-1.5 text-xs hover:bg-slate-700 border-b border-slate-700 last:border-0 ${
+                        item === it ? 'text-amber-300' : 'text-slate-200'
+                      }`}
+                    >
+                      {it}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Moves */}
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Moves (max 4)</p>
+            <MoveSelector
+              pokemon={pokemon}
+              selectedMoves={moves}
+              onChange={m => onSetMoves(slotIndex, m)}
+            />
+          </div>
+
           {/* Competitive Build */}
           {compSet && (
             <div className="bg-slate-700/40 border border-slate-600/60 rounded-xl p-3 flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-violet-300 uppercase tracking-wide">Competitive Build</p>
+                <p className="text-xs font-semibold text-violet-300 uppercase tracking-wide">Competitive Build Reference</p>
                 <span className="text-[10px] text-slate-400 bg-slate-700 px-2 py-0.5 rounded-full">{compSet.role}</span>
               </div>
 
@@ -251,7 +361,10 @@ export function TeamSlot({ member, slotIndex, onRemove, onSetMoves, onSetNature,
                 </div>
                 <div>
                   <p className="text-[10px] text-slate-500 mb-0.5">Ability</p>
-                  <span className="text-xs text-slate-200">{compSet.ability}</span>
+                  <span className={`text-xs font-medium ${member.selectedAbility === compSet.ability ? 'text-green-400' : 'text-slate-200'}`}>
+                    {compSet.ability}
+                    {member.selectedAbility === compSet.ability && <span className="ml-1 text-green-400">✓</span>}
+                  </span>
                 </div>
               </div>
 
@@ -284,49 +397,6 @@ export function TeamSlot({ member, slotIndex, onRemove, onSetMoves, onSetNature,
               </div>
             </div>
           )}
-
-          {/* Nature */}
-          <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Nature</p>
-            <select
-              value={nature}
-              onChange={e => onSetNature(slotIndex, e.target.value)}
-              className="bg-slate-700 border border-slate-600 text-slate-200 text-xs rounded-lg px-2 py-1.5 w-full"
-            >
-              {(natures ?? []).map(n => (
-                <option key={n.name} value={n.name}>
-                  {n.name}{n.increasedStat ? ` (+${n.increasedStat} / -${n.decreasedStat})` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Abilities */}
-          <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">
-              {member.megaEvolved ? 'Mega Ability' : 'Abilities'}
-              <span className="ml-1 font-normal normal-case text-slate-600">(click for description)</span>
-            </p>
-            <div className="flex flex-wrap gap-1">
-              {Object.entries(displayPokemon.abilities).map(([slot, ability]) => (
-                <AbilityBadge
-                  key={slot}
-                  name={ability}
-                  isHidden={slot === 'H' && !member.megaEvolved}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Moves */}
-          <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Moves (max 4)</p>
-            <MoveSelector
-              pokemon={pokemon}
-              selectedMoves={moves}
-              onChange={m => onSetMoves(slotIndex, m)}
-            />
-          </div>
         </div>
       )}
     </div>

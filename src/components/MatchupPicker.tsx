@@ -4,6 +4,7 @@ import { TypeBadge } from './TypeBadge';
 import { usePokemonData } from '../hooks/usePokemonData';
 import { getOffensiveEffectiveness, getDefensiveEffectiveness } from '../data/typeChart';
 import { getMetaWeight } from '../data/metaWeights';
+import { ALL_ITEMS, ATTACKER_ITEM_EFFECTS, DEFENDER_ITEM_EFFECTS } from '../data/items';
 import type { Pokemon, TeamMember, Move, PokemonType } from '../types/pokemon';
 
 interface Props {
@@ -11,6 +12,13 @@ interface Props {
 }
 
 type Weather = 'None' | 'Sun' | 'Rain' | 'Sand' | 'Snow';
+
+interface DamageResult {
+  min: number;
+  max: number;
+  defHP: number;
+  atkRecoilFraction?: number;
+}
 
 function getActivePokemon(member: TeamMember, allPokemon?: Pokemon[]): Pokemon {
   if (member.megaEvolved && member.megaFormName && allPokemon) {
@@ -42,7 +50,7 @@ function scoreVsOpponents(
         bestOff = Math.max(bestOff, getOffensiveEffectiveness(move.type, opp.types));
       }
     }
-    offScore += Math.log2(bestOff) + 1; // 4x→3, 2x→2, 1x→1, 0.5x→0
+    offScore += Math.log2(bestOff) + 1;
     if (bestOff >= 2) seCount++;
 
     let immuneToThisOpp = false;
@@ -67,7 +75,6 @@ function pickReason(seCount: number, immuneCount: number, total: number): string
   return parts.join(' · ') || 'Balanced coverage';
 }
 
-// Approximate level-50 stat (31 IVs, 0 EVs, neutral nature)
 function calcStat(base: number): number {
   return Math.floor((2 * base + 31) * 50 / 100 + 5);
 }
@@ -85,6 +92,18 @@ function stageMult(stage: number): number {
   return stage >= 0 ? (2 + stage) / 2 : 2 / (2 - stage);
 }
 
+const ABILITY_IMMUNITIES: Record<string, PokemonType[]> = {
+  'Water Absorb':  ['Water'],
+  'Storm Drain':   ['Water'],
+  'Dry Skin':      ['Water'],
+  'Volt Absorb':   ['Electric'],
+  'Motor Drive':   ['Electric'],
+  'Lightning Rod': ['Electric'],
+  'Flash Fire':    ['Fire'],
+  'Levitate':      ['Ground'],
+  'Sap Sipper':    ['Grass'],
+};
+
 function computeDamage(
   move: Move,
   attacker: Pokemon,
@@ -95,30 +114,87 @@ function computeDamage(
   reflect: boolean,
   lightScreen: boolean,
   doubles: boolean,
-): { min: number; max: number; defHP: number } | null {
+  atkAbility: string,
+  defAbility: string,
+  atkItem: string,
+  defItem: string,
+  isContact: boolean,
+): DamageResult | null {
   if (!move.power || move.category === 'Status') return null;
+
+  const defHP = calcHP(defender.hp);
+
+  // Ability-based type immunity
+  const immuneTypes = ABILITY_IMMUNITIES[defAbility] ?? [];
+  if (immuneTypes.includes(move.type)) return { min: 0, max: 0, defHP };
+
+  const typeEff = getOffensiveEffectiveness(move.type, defender.types);
+  if (typeEff === 0) return { min: 0, max: 0, defHP };
 
   const isPhys = move.category === 'Physical';
   const baseAtk = isPhys ? attacker.atk : attacker.spa;
   const baseDef = isPhys ? defender.def : defender.spd;
 
-  const effAtk = Math.floor(calcStat(baseAtk) * stageMult(atkStage));
-  const effDef = Math.floor(calcStat(baseDef) * stageMult(defStage));
-  const defHP  = calcHP(defender.hp);
+  // Attacker ability stat multipliers
+  let atkStatMult = 1;
+  if ((atkAbility === 'Huge Power' || atkAbility === 'Pure Power') && isPhys) atkStatMult = 2;
+  else if (atkAbility === 'Gorilla Tactics' && isPhys) atkStatMult = 1.5;
+
+  // Attacker item stat multipliers
+  const atkItemEff = ATTACKER_ITEM_EFFECTS[atkItem] ?? {};
+  let atkItemStatMult = 1;
+  if (atkItemEff.atkMult && isPhys) atkItemStatMult = atkItemEff.atkMult;
+  else if (atkItemEff.spaMult && !isPhys) atkItemStatMult = atkItemEff.spaMult;
+
+  // Defender item stat multipliers
+  const defItemEff = DEFENDER_ITEM_EFFECTS[defItem] ?? {};
+  const defItemStatMult = (defItemEff.spdMult && !isPhys) ? defItemEff.spdMult : 1;
+
+  const effAtk = Math.floor(calcStat(baseAtk) * stageMult(atkStage) * atkStatMult * atkItemStatMult);
+  const effDef = Math.floor(calcStat(baseDef) * stageMult(defStage) * defItemStatMult);
 
   const base = Math.floor(Math.floor(Math.floor(2 * 50 / 5 + 2) * move.power * effAtk / effDef) / 50) + 2;
 
-  const stab  = attacker.types.includes(move.type) ? 1.5 : 1;
-  const typeEff = getOffensiveEffectiveness(move.type, defender.types);
+  // STAB — Adaptability gives ×2 instead of ×1.5
+  const hasSTAB = attacker.types.includes(move.type);
+  const stab = hasSTAB ? (atkAbility === 'Adaptability' ? 2 : 1.5) : 1;
+
   const wMult = weatherMult(weather, move.type);
   const screen = (isPhys && reflect) || (!isPhys && lightScreen) ? (doubles ? 2/3 : 0.5) : 1;
 
-  const total = base * stab * typeEff * wMult * screen;
+  // Damage multipliers (chain-applied)
+  let damageMult = 1;
+  if (atkAbility === 'Technician' && move.power <= 60) damageMult *= 1.5;
+  if (atkAbility === 'Tough Claws' && isContact) damageMult *= 1.3;
+  if (atkItemEff.damageMult && (!atkItemEff.onlySE || typeEff > 1)) damageMult *= atkItemEff.damageMult;
+  if (isPhys && atkItem === 'Muscle Band') damageMult *= 1.1;
+  if (!isPhys && atkItem === 'Wise Glasses') damageMult *= 1.1;
+
+  // Defender ability damage modifiers
+  if (defAbility === 'Thick Fat' && (move.type === 'Fire' || move.type === 'Ice')) damageMult *= 0.5;
+  if ((defAbility === 'Filter' || defAbility === 'Solid Rock' || defAbility === 'Prism Armor') && typeEff > 1) damageMult *= 0.75;
+  if (defAbility === 'Fluffy' && isContact) damageMult *= 2;
+  if (defAbility === 'Fluffy' && move.type === 'Fire') damageMult *= 2;
+  if (defAbility === 'Multiscale' || defAbility === 'Shadow Shield') damageMult *= 0.5;
+
+  const total = base * stab * typeEff * wMult * screen * damageMult;
+
+  // Contact recoil to attacker (from defender ability/item)
+  let atkRecoilFraction: number | undefined;
+  if (isContact) {
+    if (defAbility === 'Rough Skin' || defAbility === 'Iron Barbs') {
+      atkRecoilFraction = (atkRecoilFraction ?? 0) + 0.125;
+    }
+    if (defItemEff.contactRecoilFraction) {
+      atkRecoilFraction = (atkRecoilFraction ?? 0) + defItemEff.contactRecoilFraction;
+    }
+  }
 
   return {
     min: Math.floor(total * 0.85),
     max: Math.floor(total),
     defHP,
+    atkRecoilFraction,
   };
 }
 
@@ -195,6 +271,64 @@ function PokemonInput({
   );
 }
 
+function ItemSearch({
+  value,
+  onSelect,
+  onClear,
+  placeholder = 'Search items…',
+}: {
+  value: string;
+  onSelect: (item: string) => void;
+  onClear: () => void;
+  placeholder?: string;
+}) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+
+  const suggestions = useMemo(() => {
+    if (!query.trim()) return [];
+    return ALL_ITEMS.filter(i => i.toLowerCase().includes(query.toLowerCase())).slice(0, 8);
+  }, [query]);
+
+  if (value) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <span className="text-[10px] bg-amber-900/40 border border-amber-700/40 text-amber-300 px-1.5 py-0.5 rounded">{value}</span>
+        <button onClick={onClear} className="text-slate-500 hover:text-red-400 flex-shrink-0">
+          <X size={10} />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        value={query}
+        onChange={e => { setQuery(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        placeholder={placeholder}
+        className="w-full bg-slate-700 border border-slate-600 text-slate-200 text-[10px] rounded px-1.5 py-1 placeholder:text-slate-600 focus:outline-none focus:border-violet-500"
+      />
+      {open && suggestions.length > 0 && (
+        <div className="absolute z-30 top-full mt-0.5 left-0 right-0 bg-slate-800 border border-slate-600 rounded-lg shadow-xl overflow-y-auto max-h-32">
+          {suggestions.map(it => (
+            <button
+              key={it}
+              onMouseDown={() => { onSelect(it); setQuery(''); setOpen(false); }}
+              className="w-full text-left px-2 py-1 text-[10px] text-slate-200 hover:bg-slate-700 border-b border-slate-700 last:border-0"
+            >
+              {it}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function MatchupPicker({ members }: Props) {
   const { data: allPokemon } = usePokemonData();
   const [format, setFormat] = useState<'singles' | 'doubles'>('doubles');
@@ -210,6 +344,9 @@ export function MatchupPicker({ members }: Props) {
   const [weather, setWeather] = useState<Weather>('None');
   const [reflect, setReflect] = useState(false);
   const [lightScreen, setLightScreen] = useState(false);
+  const [dmgDefAbility, setDmgDefAbility] = useState('');
+  const [dmgDefItem, setDmgDefItem] = useState('');
+  const [isContact, setIsContact] = useState(false);
 
   const activeMembers = members.filter(Boolean) as TeamMember[];
   const validOpponents = opponents.filter(Boolean) as Pokemon[];
@@ -252,20 +389,26 @@ export function MatchupPicker({ members }: Props) {
       .map(({ member }) => member);
   }, [recommended, predictedLeads, allPokemon]);
 
-  // Damage calculator
+  // Damage calculator derived values
   const dmgAttacker = activeMembers[dmgAtkIdx];
   const dmgDefender = validOpponents[dmgDefIdx];
   const dmgAttackerPokemon = dmgAttacker ? getActivePokemon(dmgAttacker, allPokemon) : null;
   const dmgMoves = dmgAttacker?.moves.filter(m => m.category !== 'Status' && m.power) ?? [];
   const dmgMove = dmgMoves[dmgMoveIdx] ?? null;
 
+  const atkAbility = dmgAttacker?.selectedAbility ?? '';
+  const atkItem = dmgAttacker?.item ?? '';
+  const defAbilityOptions = dmgDefender ? Object.values(dmgDefender.abilities) : [];
+  const effectiveDefAbility = dmgDefAbility || defAbilityOptions[0] || '';
+
   const dmgResult = useMemo(() => {
     if (!dmgAttackerPokemon || !dmgDefender || !dmgMove) return null;
     return computeDamage(
       dmgMove, dmgAttackerPokemon, dmgDefender,
       atkStage, defStage, weather, reflect, lightScreen, format === 'doubles',
+      atkAbility, effectiveDefAbility, atkItem, dmgDefItem, isContact,
     );
-  }, [dmgAttackerPokemon, dmgDefender, dmgMove, atkStage, defStage, weather, reflect, lightScreen, format]);
+  }, [dmgAttackerPokemon, dmgDefender, dmgMove, atkStage, defStage, weather, reflect, lightScreen, format, atkAbility, effectiveDefAbility, atkItem, dmgDefItem, isContact]);
 
   const selectOpponent = (index: number, pokemon: Pokemon) => {
     setOpponents(prev => { const n = [...prev]; n[index] = pokemon; return n; });
@@ -442,6 +585,7 @@ export function MatchupPicker({ members }: Props) {
 
                 {/* Attacker / Move / Defender */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* Attacker */}
                   <div>
                     <p className="text-[10px] text-slate-500 mb-1 uppercase tracking-wide">Attacker</p>
                     <select
@@ -455,7 +599,15 @@ export function MatchupPicker({ members }: Props) {
                         </option>
                       ))}
                     </select>
+                    {(atkAbility || atkItem) && (
+                      <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5">
+                        {atkAbility && <span className="text-[10px] text-violet-400">{atkAbility}</span>}
+                        {atkItem && <span className="text-[10px] text-amber-400">{atkItem}</span>}
+                      </div>
+                    )}
                   </div>
+
+                  {/* Move */}
                   <div>
                     <p className="text-[10px] text-slate-500 mb-1 uppercase tracking-wide">Move</p>
                     <select
@@ -471,22 +623,57 @@ export function MatchupPicker({ members }: Props) {
                         ))}
                     </select>
                   </div>
+
+                  {/* Defender */}
                   <div>
                     <p className="text-[10px] text-slate-500 mb-1 uppercase tracking-wide">Defender</p>
                     <select
                       value={dmgDefIdx}
-                      onChange={e => setDmgDefIdx(Number(e.target.value))}
+                      onChange={e => {
+                        setDmgDefIdx(Number(e.target.value));
+                        setDmgDefAbility('');
+                        setDmgDefItem('');
+                      }}
                       className="w-full bg-slate-700 border border-slate-600 text-slate-200 text-xs rounded-lg px-2 py-1.5"
                     >
                       {validOpponents.map((p, i) => (
                         <option key={i} value={i}>{p.name}</option>
                       ))}
                     </select>
+
+                    {/* Defender ability selector */}
+                    {defAbilityOptions.length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {defAbilityOptions.map(ab => (
+                          <button
+                            key={ab}
+                            onClick={() => setDmgDefAbility(ab === dmgDefAbility ? '' : ab)}
+                            className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${
+                              ab === effectiveDefAbility
+                                ? 'bg-violet-600/30 border-violet-500 text-violet-300'
+                                : 'bg-slate-700 border-slate-600 text-slate-400 hover:text-slate-200'
+                            }`}
+                          >
+                            {ab}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Defender item search */}
+                    <div className="mt-1.5">
+                      <ItemSearch
+                        value={dmgDefItem}
+                        onSelect={setDmgDefItem}
+                        onClear={() => setDmgDefItem('')}
+                        placeholder="Defender item…"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {/* Stat stages */}
-                <div className="flex flex-wrap gap-4">
+                {/* Stat stages + Contact toggle */}
+                <div className="flex flex-wrap gap-4 items-center">
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-slate-400 uppercase tracking-wide w-16">Atk stage</span>
                     {stageBtn(setAtkStage, atkStage)}
@@ -494,6 +681,19 @@ export function MatchupPicker({ members }: Props) {
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-slate-400 uppercase tracking-wide w-16">Def stage</span>
                     {stageBtn(setDefStage, defStage)}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wide">Contact</span>
+                    <button
+                      onClick={() => setIsContact(c => !c)}
+                      className={`text-xs px-2 py-0.5 rounded-lg border transition-colors ${
+                        isContact
+                          ? 'bg-green-600/30 border-green-500 text-green-300'
+                          : 'bg-slate-700 border-slate-600 text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {isContact ? 'Yes' : 'No'}
+                    </button>
                   </div>
                 </div>
 
@@ -543,19 +743,20 @@ export function MatchupPicker({ members }: Props) {
                 {/* Result */}
                 {dmgResult && dmgMove && dmgAttackerPokemon && dmgDefender ? (
                   <div className="bg-slate-900 border border-slate-700 rounded-xl p-3">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="text-sm font-semibold text-slate-200">
-                        {dmgAttackerPokemon.name}
-                      </span>
+                    <div className="flex items-center gap-3 mb-2 flex-wrap">
+                      <span className="text-sm font-semibold text-slate-200">{dmgAttackerPokemon.name}</span>
                       <span className="text-xs text-slate-400">{dmgMove.name}</span>
                       <span className="text-xs text-slate-600">→</span>
                       <span className="text-sm font-semibold text-slate-200">{dmgDefender.name}</span>
+                      {effectiveDefAbility && (
+                        <span className="text-[10px] text-violet-400">[{effectiveDefAbility}]</span>
+                      )}
                     </div>
                     {dmgResult.min === 0 ? (
                       <p className="text-sm text-slate-500">No effect (immune)</p>
                     ) : (
                       <>
-                        <div className="flex items-end gap-3">
+                        <div className="flex items-end gap-3 flex-wrap">
                           <div>
                             <p className="text-[10px] text-slate-500 mb-0.5">Damage range</p>
                             <p className="text-lg font-bold font-mono text-slate-100">
@@ -595,6 +796,24 @@ export function MatchupPicker({ members }: Props) {
                             />
                           </div>
                         </div>
+
+                        {/* Recoil notes */}
+                        {(dmgResult.atkRecoilFraction || atkItem === 'Life Orb') && (
+                          <div className="mt-2 flex flex-col gap-0.5">
+                            {dmgResult.atkRecoilFraction && (
+                              <p className="text-[10px] text-orange-400">
+                                Contact recoil: attacker takes {(dmgResult.atkRecoilFraction * 100).toFixed(1)}% of max HP
+                                {effectiveDefAbility === 'Rough Skin' && ' (Rough Skin)'}
+                                {effectiveDefAbility === 'Iron Barbs' && ' (Iron Barbs)'}
+                                {dmgDefItem === 'Rocky Helmet' && ' + Rocky Helmet'}
+                              </p>
+                            )}
+                            {atkItem === 'Life Orb' && (
+                              <p className="text-[10px] text-orange-400">Life Orb: attacker loses 10% of max HP</p>
+                            )}
+                          </div>
+                        )}
+
                         <p className="text-[10px] text-slate-600 mt-2">Approximate · Lv.50 · 31 IVs · no SP investment · neutral nature</p>
                       </>
                     )}

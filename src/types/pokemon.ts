@@ -52,6 +52,7 @@ export interface TeamMember {
   spAllocation: Partial<Record<keyof BaseStats, number>>;
   megaEvolved?: boolean;
   megaFormName?: string;
+  selectedAbility?: string;
 }
 
 export interface Team {

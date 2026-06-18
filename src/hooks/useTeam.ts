@@ -33,6 +33,7 @@ export function useTeam() {
         nature: 'Hardy',
         item: '',
         spAllocation: {},
+        selectedAbility: Object.values(pokemon.abilities)[0] ?? '',
       };
       return next;
     });
@@ -86,6 +87,16 @@ export function useTeam() {
     });
   }, []);
 
+  const setSelectedAbility = useCallback((slotIndex: number, ability: string) => {
+    setMembers(prev => {
+      const next = [...prev];
+      const member = next[slotIndex];
+      if (!member) return prev;
+      next[slotIndex] = { ...member, selectedAbility: ability };
+      return next;
+    });
+  }, []);
+
   const loadTeam = useCallback((newMembers: (TeamMember | null)[]) => {
     setMembers(newMembers.length === TEAM_SIZE ? newMembers : Array(TEAM_SIZE).fill(null));
   }, []);
@@ -104,6 +115,7 @@ export function useTeam() {
     setNature,
     setItem,
     setMegaEvolved,
+    setSelectedAbility,
     loadTeam,
     isFull,
     count,
