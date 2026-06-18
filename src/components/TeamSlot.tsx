@@ -6,6 +6,7 @@ import { PokemonSprite } from './PokemonSprite';
 import { MoveSelector } from './MoveSelector';
 import { useNatures, usePokemonData } from '../hooks/usePokemonData';
 import { getCompetitiveSet } from '../data/competitiveSets';
+import { AbilityBadge } from './AbilityBadge';
 import type { TeamMember, Move } from '../types/pokemon';
 
 interface Props {
@@ -304,12 +305,15 @@ export function TeamSlot({ member, slotIndex, onRemove, onSetMoves, onSetNature,
           <div>
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">
               {member.megaEvolved ? 'Mega Ability' : 'Abilities'}
+              <span className="ml-1 font-normal normal-case text-slate-600">(click for description)</span>
             </p>
             <div className="flex flex-wrap gap-1">
               {Object.entries(displayPokemon.abilities).map(([slot, ability]) => (
-                <span key={slot} className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded">
-                  {ability}{slot === 'H' && !member.megaEvolved ? ' (HA)' : ''}
-                </span>
+                <AbilityBadge
+                  key={slot}
+                  name={ability}
+                  isHidden={slot === 'H' && !member.megaEvolved}
+                />
               ))}
             </div>
           </div>
