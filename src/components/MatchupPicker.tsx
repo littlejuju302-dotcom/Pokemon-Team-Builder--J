@@ -130,14 +130,12 @@ function hkoLabel(minPct: number, maxPct: number): string {
 }
 
 function PokemonInput({
-  value,
   locked,
   placeholder,
   allPokemon,
   onSelect,
   onClear,
 }: {
-  value: string;
   locked: Pokemon | null;
   placeholder: string;
   allPokemon: Pokemon[] | undefined;
@@ -276,7 +274,7 @@ export function MatchupPicker({ members }: Props) {
     setOpponents(prev => { const n = [...prev]; n[index] = null; return n; });
   };
 
-  const stageBtn = (val: number, set: (v: number) => void, cur: number) => (
+  const stageBtn = (set: (v: number) => void, cur: number) => (
     <div className="flex items-center gap-1">
       <button onClick={() => set(Math.max(-6, cur - 1))} disabled={cur <= -6}
         className="w-5 h-5 text-xs bg-slate-700 border border-slate-600 rounded hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed">−</button>
@@ -316,7 +314,6 @@ export function MatchupPicker({ members }: Props) {
           {Array.from({ length: 6 }).map((_, i) => (
             <PokemonInput
               key={i}
-              value={opponents[i]?.name ?? ''}
               locked={opponents[i]}
               placeholder={`Pokémon ${i + 1}`}
               allPokemon={allPokemon}
@@ -492,11 +489,11 @@ export function MatchupPicker({ members }: Props) {
                 <div className="flex flex-wrap gap-4">
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-slate-400 uppercase tracking-wide w-16">Atk stage</span>
-                    {stageBtn(atkStage, setAtkStage, atkStage)}
+                    {stageBtn(setAtkStage, atkStage)}
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-slate-400 uppercase tracking-wide w-16">Def stage</span>
-                    {stageBtn(defStage, setDefStage, defStage)}
+                    {stageBtn(setDefStage, defStage)}
                   </div>
                 </div>
 
