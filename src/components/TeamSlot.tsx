@@ -64,6 +64,35 @@ export function TeamSlot({
     return ALL_ITEMS.filter(i => i.toLowerCase().includes(itemQuery.toLowerCase())).slice(0, 8);
   }, [itemQuery]);
 
+  // Derive displayPokemon early (non-hook) so the memos below can use it before the early return.
+  const _activeMega = (member?.megaEvolved && member?.megaFormName)
+    ? allPokemon?.find(p => p.name === member.megaFormName) ?? null
+    : null;
+  const _displayPokemon = _activeMega ?? member?.pokemon ?? null;
+
+  // These useMemo calls MUST stay before the early return so hook call order never changes.
+  const natureMults = useMemo(() => {
+    const result = {} as Record<SpStat, number>;
+    const nat = member?.nature ?? 'Hardy';
+    for (const s of SP_STATS) result[s] = s === 'hp' ? 1 : getNatureMult(s, nat, natures);
+    return result;
+  }, [member?.nature, natures]);
+
+  const finalStats = useMemo(() => {
+    if (!member || !_displayPokemon) return {} as Record<SpStat, number>;
+    const dp = _displayPokemon;
+    const result = {} as Record<SpStat, number>;
+    for (const s of SP_STATS) {
+      result[s] = calcFinalStat(
+        dp[s as keyof typeof dp] as number,
+        s === 'hp',
+        member.spAllocation[s as keyof BaseStats] ?? 0,
+        natureMults[s],
+      );
+    }
+    return result;
+  }, [_displayPokemon, member?.spAllocation, natureMults]);
+
   if (!member) {
     return (
       <div className="border-2 border-dashed border-slate-700 rounded-xl flex items-center justify-center h-20 text-slate-600 text-sm">
@@ -73,40 +102,14 @@ export function TeamSlot({
   }
 
   const { pokemon, moves, nature, item } = member;
-
-  const activeMega = member.megaEvolved && member.megaFormName
-    ? allPokemon?.find(p => p.name === member.megaFormName) ?? null
-    : null;
-  const displayPokemon = activeMega ?? pokemon;
+  const activeMega = _activeMega;
+  const displayPokemon = _displayPokemon ?? pokemon;
 
   const compSet = getCompetitiveSet(
     member.megaEvolved && member.megaFormName ? member.megaFormName : pokemon.name
   );
-
-  // SP totals
   const totalSP = SP_STATS.reduce((sum, s) => sum + (member.spAllocation[s] ?? 0), 0);
   const remainingSP = 66 - totalSP;
-
-  // Per-stat nature multipliers
-  const natureMults = useMemo(() => {
-    const result = {} as Record<SpStat, number>;
-    for (const s of SP_STATS) result[s] = s === 'hp' ? 1 : getNatureMult(s, nature, natures);
-    return result;
-  }, [nature, natures]);
-
-  // Final stats at lv50 with nature + SP
-  const finalStats = useMemo(() => {
-    const result = {} as Record<SpStat, number>;
-    for (const s of SP_STATS) {
-      result[s] = calcFinalStat(
-        displayPokemon[s as keyof typeof displayPokemon] as number,
-        s === 'hp',
-        member.spAllocation[s as keyof BaseStats] ?? 0,
-        natureMults[s],
-      );
-    }
-    return result;
-  }, [displayPokemon, member.spAllocation, natureMults]);
 
   const setSP = (stat: SpStat, value: number) => {
     onSetSpAllocation(slotIndex, stat, value);
