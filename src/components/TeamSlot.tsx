@@ -102,7 +102,6 @@ export function TeamSlot({
   }
 
   const { pokemon, moves, nature, item } = member;
-  const activeMega = _activeMega;
   const displayPokemon = _displayPokemon ?? pokemon;
 
   const compSet = getCompetitiveSet(
